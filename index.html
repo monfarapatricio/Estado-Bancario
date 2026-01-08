@@ -1,0 +1,2198 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- Lucide Icons, Chart.js, XLSX.js, Chart.js DataLabels -->
+    <script type="module" src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background-color: #eef2f5;
+      }
+      .contenedor-principal {
+        max-width: 1000px;
+        margin: 40px auto;
+        padding: 25px;
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        animation: fadeIn 0.5s ease-in-out;
+        position: relative;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* KPI CARDS */
+      .kpi-cards { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 10px;
+      }
+      .kpi-card {
+        flex: 1 1 200px; display: flex; flex-direction: row; align-items: center;
+        padding: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.06);
+        transition: transform .2s ease, box-shadow .2s ease; text-align: left; color: white;
+      }
+      .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+      .kpi-icon { flex-shrink: 0; margin-right: 12px; }
+      .kpi-icon i { width: 32px; height: 32px; stroke-width: 2; stroke: currentColor; }
+      .kpi-info { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+      .kpi-titulo { font-size: clamp(.8rem, 2.5vw, 1.2rem); margin: 0; color: rgba(255,255,255,.9); }
+      .kpi-valor { font-size: clamp(1.2rem, 4vw, 1.6rem); font-weight: bold; margin-top: 4px; }
+
+      /* KPI gradients */
+      .gradient-blue   { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+      .gradient-green  { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+      .gradient-purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+      .gradient-orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+      .gradient-red    { background: linear-gradient(135deg, #ff6a00 0%, #ee0979 100%); }
+
+      /* Filtros */
+      .filtro-container { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 20px; }
+      .filtro-container > div { display: flex; align-items: center; gap: 8px; }
+      select, button, input[type="date"] {
+        padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px;
+        background-color: #fefefe; transition: box-shadow .2s;
+      }
+      select:focus, input[type="date"]:focus { box-shadow: 0 0 3px #007bff; outline: none; }
+      button { background-color: #007bff; color: white; border: none; font-weight: bold; transition: background-color .3s; cursor: pointer; }
+      button:hover { background-color: #0056b3; }
+
+      /* Tabla */
+      #tablaResumen { width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      }
+      #tablaResumen table {
+        width: 100%; min-width: 750px; border-collapse: collapse; background-color: white; border-radius: 6px; overflow: hidden; animation: fadeIn .5s ease-in-out;
+      }
+      #tablaResumen th, #tablaResumen td { border: 1px solid #e0e0e0; padding: 10px; font-size: 13px;
+      }
+      #tablaResumen th { background-color: #007bff; color: white; position: sticky; top: 0; z-index: 2; text-transform: uppercase; letter-spacing: .5px; cursor: pointer; }
+      #tablaResumen tr:nth-child(even) { background-color: #f9f9f9;
+      }
+      .negativo { color: red; font-weight: bold; }
+      tr.subtotal { background-color: #f0f0f0; font-weight: bold; }
+      tr.total { background-color: #cde9f9; font-weight: bold; border-top: 3px double #007bff; }
+      .subtotal td.negativo, .total td.negativo { color: red; }
+
+      /* Spinner */
+      #loadingOverlay {
+        position: absolute; inset: 0; background: rgba(255,255,255,.7);
+        display: none; align-items: center; justify-content: center; z-index: 999;
+      }
+      .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 36px; height: 36px; animation: spin 1s linear infinite; }
+      @keyframes spin { from { transform: rotate(0) } to { transform: rotate(360deg) } }
+
+      /* Tabs */
+      .tabs-container { margin-top: 40px; background-color: #fff; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,.08); animation: fadeIn .5s ease-in-out; }
+      .tabs-header { list-style: none; margin: 0; padding: 0; display: flex; border-bottom: 2px solid #e0e0e0; background-color: #f7f9fa; }
+      .tabs-header li.tab-link { padding: 12px 16px; cursor: pointer; font-size: 15px; transition: background-color .2s; color: #333; display: flex; align-items: center; gap: 6px; }
+      .tabs-header li.tab-link:hover { background-color: #e8f1ff; }
+      .tabs-header li.tab-link.active { background-color: #ffffff; border-bottom: 3px solid #007bff; font-weight: bold; }
+      .tabs-content { padding: 20px; }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+      #tabTorta canvas { width: 50% !important; height: auto !important; display: block; margin: 0 auto; }
+
+      /* Badges y resaltado vencimiento */
+      .badge { display:inline-block; padding:4px 8px; border-radius:9999px; font-size:12px; font-weight:600; }
+      .badge-ok { background:#e6f8ec; color:#1b5e20; border:1px solid #c8e6c9; }
+      .badge-warn { background:#fff4e5; color:#8a4b00; border:1px solid #ffe0b2; }
+      .badge-danger { background:#fdecea; color:#b71c1c; border:1px solid #ffcdd2; }
+      tr.row-vencido { background-color:#fff1f0 !important; }
+      tr.row-porvencer { background-color:#fff9e6 !important; }
+      /* Celda Facturado dividida en 2 */
+      .fact2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    align-items: stretch;
+  }
+      .fact-box {
+    border: 1px solid #e4e4e7;
+    border-radius: 8px;
+    padding: 6px 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    background: #fafafa;
+    line-height: 1.2;
+  }
+      .fact-left  { background: #fdecea;  border-color:#ffcdd2;
+  } /* Vencido */
+      .fact-right { background: #fff4e5;  border-color:#ffe0b2;
+  }
+  /* A vencer */
+      .badge-warn { background:#e8f3ff; color:#0b5cab; border:1px solid #bbd6ff;
+  } /* más “info” para A VENCER */
+
+/* App-level nav (pestañas de vistas) */
+      .app-nav {
+        max-width: 1000px;
+        margin: 16px auto 0;
+        padding: 0 4px 8px;
+        display: flex;
+        gap: 8px;
+        border-bottom: 1px solid #e0e0e0;
+}
+      .app-tab {
+        display:flex; align-items:center; gap:8px;
+        padding: 8px 12px; cursor: pointer;
+        border-radius: 10px 10px 0 0;
+        background:#f7f9fa; border:1px solid #e0e0e0; border-bottom:none;
+        font-size:14px; color:#333;
+}
+.app-tab:hover { background:#e8f1ff; }
+.app-tab.active { background:#fff; font-weight:600; box-shadow: 0 -2px 8px rgba(0,0,0,.04); }
+
+/* Utilidad para ocultar vistas */
+.hidden { display: none !important; }
+
+/* ===== Ajuste de filtros (vista nueva) ===== */
+#vista-nueva #rec-filtros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+@media (max-width: 980px) { #vista-nueva #rec-filtros { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { #vista-nueva #rec-filtros { grid-template-columns: 1fr; } }
+
+/* Bloques internos flexibles */
+#vista-nueva #rec-filtros > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0; /* permite al hijo contraerse */
+}
+
+/* El label no empuja el layout */
+#vista-nueva #rec-filtros label { white-space: nowrap; }
+
+/* El select ocupa todo el ancho disponible, sin romper grilla */
+#vista-nueva #recClienteSelect {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;      /* clave para que quepa en flex/grid */
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Botonera abajo y en su propia fila */
+#vista-nueva #rec-filtros .btn-export {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+  padding-top: 4px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#vista-nueva #tablaRecursos td.num-cell,
+#vista-nueva #tablaRecursos th:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+#vista-nueva #tablaRecursos td.negativo { color: #b71c1c; }
+
+/* Contenedor filtros Alquileres: que se autoajuste */
+#alq-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+}
+
+#alq-filtros > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* El select ocupa el espacio disponible sin desbordar */
+#alqCliente {
+  flex: 1 1 300px;     /* crece, reduce y base razonable */
+  min-width: 220px;
+  max-width: 88%;
+}
+
+/* Inputs de fecha también responsivos */
+#alqDesde, #alqHasta {
+  width: 160px;
+  max-width: 100%;
+}
+    </style>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => { lucide.createIcons(); });
+    </script>
+  </head>
+
+  <body>
+    <!-- Menú de vistas -->
+<div class="app-nav" role="tablist" aria-label="Cambiar vista">
+  <button class="app-tab active" data-target="#vista-actual" title="Comprobantes de pago (vista actual)">
+    <i data-lucide="receipt"></i> Comprobantes de pago
+  </button>
+  <button class="app-tab" data-target="#vista-nueva" title="Recursos disponibles (vista nueva)">
+    <i data-lucide="banknote"></i> Recursos disponibles
+  </button>
+  <button class="app-tab" data-target="#vista-alquileres" title="Alquileres">
+  <i data-lucide="building-2"></i> Conceciones
+</button>
+</div>
+
+    <div class="contenedor-principal" id="vista-actual">
+
+      <div id="loadingOverlay"><div class="spinner"></div></div>
+
+      <!-- KPI CARDS en el orden solicitado -->
+      <div class="kpi-cards">
+        <div class="kpi-card gradient-blue">
+          <div class="kpi-icon"><i data-lucide="file-text"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-titulo">Facturado</div>
+            <div class="kpi-valor" id="kpiFacturado">—</div>
+          </div>
+        </div>
+        <div class="kpi-card gradient-green">
+          <div class="kpi-icon"><i data-lucide="check-circle"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-titulo">Abonado</div>
+            <div class="kpi-valor" id="kpiAbonadoCUT">—</div>
+          </div>
+        </div>
+        <div class="kpi-card gradient-red">
+          <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-titulo">Pendiente vencido</div>
+            <div class="kpi-valor" id="kpiPendVencido">—</div>
+          </div>
+        </div>
+        <div class="kpi-card gradient-orange">
+          <div class="kpi-icon"><i data-lucide="clock"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-titulo">Pendiente por vencer</div>
+            <div class="kpi-valor" id="kpiPendPorVencer">—</div>
+          </div>
+        </div>
+        <div class="kpi-card gradient-purple">
+          <div class="kpi-icon"><i data-lucide="x-circle"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-titulo">Débitos/Reintegros</div>
+            <div class="kpi-valor" id="kpiDebito">—</div>
+          </div>
+        </div>
+        <div class="kpi-card gradient-blue">
+          <div class="kpi-icon"><i data-lucide="balance"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-titulo">Saldo total</div>
+            <div class="kpi-valor" id="kpiSaldoTotal">—</div>
+          </div>
+        </div>
+    </div>
+
+      <!-- Filtros -->
+      <div class="filtro-container">
+        <div>
+          <label for="clienteSelect"><i data-lucide="users" class="icono"></i>Filtrar por cliente:</label>
+          <select id="clienteSelect"></select>
+        </div>
+
+        <div class="fecha-container">
+          <label for="desde"><i data-lucide="calendar" class="icono"></i>Desde:</label>
+          <input type="date" id="desde" />
+          <label for="hasta"><i data-lucide="calendar-check" class="icono"></i>Hasta:</label>
+          <input type="date" id="hasta" />
+          <button onclick="aplicarFiltro()"><i data-lucide="filter" class="icono"></i>Aplicar</button>
+        </div>
+
+        <div class="venc-container">
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="soloVencidos"> Solo vencidos
+          </label>
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="soloPorVencer"> Solo por vencer
+          </label>
+        </div>
+
+        <div class="btn-export">
+          <button onclick="imprimirTablaYGraficos()"><i data-lucide="printer" class="icono"></i>Exportar PDF</button>
+          <button onclick="exportarExcel()"><i data-lucide="file-spreadsheet" class="icono"></i>Exportar Excel</button>
+        </div>
+      </div>
+
+      <div id="contenidoImprimible">
+        <div id="tablaResumen"></div>
+
+        <div class="tabs-container">
+          <ul class="tabs-header">
+            <li class="tab-link active" data-tab="tabGlobal"><i data-lucide="bar-chart-3" class="icono"></i> Resumen Global</li>
+            <li class="tab-link" data-tab="tabEvolucion"><i data-lucide="line-chart" class="icono"></i> Evolución Mensual</li>
+            <li class="tab-link" data-tab="tabTorta"><i data-lucide="pie-chart" class="icono"></i> Distribución Pendiente / Cobrado</li>
+            <li class="tab-link" data-tab="tabPctDeuda"><i data-lucide="percent" class="icono"></i> % Deuda / Facturación</li>
+          </ul>
+
+          <div class="tabs-content">
+            <div id="tabGlobal" class="tab-content active"><canvas id="chartResumen" height="200"></canvas></div>
+            <div id="tabEvolucion" class="tab-content"><canvas id="chartEvolucion" height="200"></canvas></div>
+            <div id="tabTorta" class="tab-content"><canvas id="chartTorta" width="200" height="100"></canvas></div>
+            <div id="tabPctDeuda" class="tab-content"><canvas id="chartPorcentajeDeuda" style="width:100%; height:350px;"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+</div>
+
+    <div class="contenedor-principal hidden" id="vista-nueva">
+<!-- ====== RECURSOS: KPIs (ACTUALIZADO) ====== -->
+<div class="kpi-cards" id="rec-kpis">
+  <div class="kpi-card gradient-green">
+    <div class="kpi-icon"><i data-lucide="banknote"></i></div>
+    <div class="kpi-info">
+      <div class="kpi-titulo">Total Percibido</div>
+      <div class="kpi-valor" id="kpiRecTotal">—</div>
+    </div>
+  </div>
+
+  <div class="kpi-card gradient-blue">
+    <div class="kpi-icon"><i data-lucide="calendar-range"></i></div>
+    <div class="kpi-info">
+      <div class="kpi-titulo">Promedio Mensual</div>
+      <div class="kpi-valor" id="kpiRecPromMes">—</div>
+    </div>
+  </div>
+
+  <div class="kpi-card gradient-orange">
+    <div class="kpi-icon"><i data-lucide="help-circle"></i></div>
+    <div class="kpi-info">
+      <div class="kpi-titulo">Sin identificar</div>
+      <!-- Muestra: "$X (YY,Y%)" -->
+      <div class="kpi-valor" id="kpiRecSinId">—</div>
+    </div>
+  </div>
+</div>
+
+  
+  <!-- ====== RECURSOS: Filtros ====== -->
+  <div class="filtro-container" id="rec-filtros">
+    <div>
+      <label for="recClienteSelect"><i data-lucide="users"></i> Cliente:</label>
+      <select id="recClienteSelect"></select>
+    </div>
+    <div>
+      <label for="recDesde"><i data-lucide="calendar"></i>Desde:</label>
+      <input type="date" id="recDesde">
+      <label for="recHasta"><i data-lucide="calendar-check"></i>Hasta:</label>
+      <input type="date" id="recHasta">
+      <button id="recAplicarBtn"><i data-lucide="filter"></i>Aplicar</button>
+    </div>
+    <div class="btn-export">
+      <button id="recPrintBtn"><i data-lucide="printer"></i>Exportar PDF</button>
+      <button id="recExcelBtn"><i data-lucide="file-spreadsheet"></i>Exportar Excel</button>
+    </div>
+  </div>
+  
+  <div id="recContenidoImprimible">
+    <!-- ====== RECURSOS: Tabla ====== -->
+    <div id="tablaRecursos"></div>
+  
+    <!-- ====== RECURSOS: Gráficos ====== -->
+    <div class="tabs-container">
+      <ul class="tabs-header" id="recTabsHeader">
+        <li class="tab-link active" data-tab="recTabResumen"><i data-lucide="bar-chart-3"></i> Top Clientes</li>
+        <li class="tab-link" data-tab="recTabEvol"><i data-lucide="line-chart"></i> Evolución Mensual</li>
+        <li class="tab-link" data-tab="recTabTorta"><i data-lucide="pie-chart"></i> Identificación</li>
+      </ul>
+      <div class="tabs-content">
+        <div id="recTabResumen" class="tab-content active"><canvas id="chartRecTop" height="220"></canvas></div>
+        <div id="recTabEvol" class="tab-content"><canvas id="chartRecEvol" height="220"></canvas></div>
+        <div id="recTabTorta" class="tab-content"><canvas id="chartRecTorta" height="220"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+    <div class="contenedor-principal hidden" id="vista-alquileres">
+  <div id="alq-loading" style="display:none"><div class="spinner"></div></div>
+
+  <!-- KPIs -->
+  <div class="kpi-cards" id="alq-kpis"> 
+  <!-- 1️⃣ Total Percibido -->
+  <div class="kpi-card gradient-green">
+    <div class="kpi-icon"><i data-lucide="banknote"></i></div>
+    <div class="kpi-info">
+      <div class="kpi-titulo">Total Percibido</div>
+      <div class="kpi-valor" id="alqKpiPercibido">—</div>
+    </div>
+  </div>
+
+  <!-- 2️⃣ Ingreso Mensual (antes era Saldo Pendiente) -->
+  <div class="kpi-card gradient-blue">
+    <div class="kpi-icon"><i data-lucide="calendar"></i></div>
+    <div class="kpi-info">
+      <div class="kpi-titulo">Ingreso Mensual</div>
+      <div class="kpi-valor" id="alqKpiIngreso">—</div>
+    </div>
+  </div>
+
+  <!-- 3️⃣ Nuevo: Saldo Pendiente -->
+  <div class="kpi-card gradient-red">
+    <div class="kpi-icon"><i data-lucide="alert-circle"></i></div>
+    <div class="kpi-info">
+      <div class="kpi-titulo">Saldo Pendiente</div>
+      <div class="kpi-valor" id="alqKpiPendiente">—</div>
+    </div>
+  </div>
+</div>
+
+  <!-- Filtros -->
+  <div class="filtro-container" id="alq-filtros">
+    <div>
+      <label for="alqCliente"><i data-lucide="users"></i> Cliente:</label>
+      <select id="alqCliente"></select>
+    </div>
+    <div>
+      <label for="alqDesde"><i data-lucide="calendar"></i>Desde:</label>
+      <input type="date" id="alqDesde">
+      <label for="alqHasta"><i data-lucide="calendar-check"></i>Hasta:</label>
+      <input type="date" id="alqHasta">
+      <button id="alqAplicar"><i data-lucide="filter"></i>Aplicar</button>
+    </div>
+    <div class="btn-export">
+      <button id="alqPrint"><i data-lucide="printer"></i>Exportar PDF</button>
+      <button id="alqExcel"><i data-lucide="file-spreadsheet"></i>Exportar Excel</button>
+    </div>
+  </div>
+
+  <div id="alqContenidoImprimible">
+    <div id="alqTabla"></div>
+
+    <div class="tabs-container">
+      <ul class="tabs-header" id="alqTabsHeader">
+        <li class="tab-link active" data-tab="alqTabEvol"><i data-lucide="line-chart"></i> Evolución mensual</li>
+        <li class="tab-link" data-tab="alqTabCumpl"><i data-lucide="percent"></i> Cumplimiento %</li>
+      </ul>
+      <div class="tabs-content">
+        <div id="alqTabEvol" class="tab-content active"><canvas id="alqChartEvol" height="220"></canvas></div>
+        <div id="alqTabCumpl" class="tab-content"><canvas id="alqChartCumpl" height="220"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+    <!-- ==================== SCRIPTS ==================== -->
+    <script>
+      lucide.createIcons();
+
+      function imprimirTablaYGraficos() {
+        const tablaHTML = document.getElementById("tablaResumen").innerHTML;
+        const resumenImg = document.getElementById("chartResumen").toDataURL();
+        const evolucionImg = document.getElementById("chartEvolucion").toDataURL();
+        const tortaImg = document.getElementById("chartTorta").toDataURL();
+
+        const html = `
+          <html><head><title>Resumen</title>
+            <style>
+              body { font-family: 'Segoe UI', sans-serif; padding: 20px; color: #000; }
+              h2 { margin-top: 24px; }
+              table { width: 100%; border-collapse: collapse; font-size: 12px; }
+              th, td { border: 1px solid #000; padding: 6px; text-align: center; }
+              th { background-color: #007bff; color: white; }
+              .subtotal td, .total td { font-weight: bold; background-color: #f0f0f0; }
+              .negativo { color: red; }
+              .grafico { text-align: center; margin: 24px 0 12px 0; }
+              .grafico img { max-width: 100%; height: auto; }
+            </style>
+          </head>
+          <body>
+            <h2>Tabla de Resumen</h2>
+            ${tablaHTML}
+            <div class="grafico"><h2>Resumen Global</h2><img src="${resumenImg}" alt="Gráfico de Barras"></div>
+            <div class="grafico"><h2>Evolución Mensual</h2><img src="${evolucionImg}" alt="Gráfico de Línea"></div>
+            <div class="grafico"><h2>Distribución Pendiente / Cobrado</h2><img src="${tortaImg}" alt="Gráfico de Torta"></div>
+          </body></html>`;
+
+        const ventana = window.open('', '', 'width=1024,height=768');
+        ventana.document.write(html);
+        ventana.document.close();
+        ventana.focus();
+        ventana.print();
+      }
+
+      function exportarExcel() {
+        const tabla = document.querySelector("#tablaResumen table");
+        if (!tabla) return;
+        const wb = XLSX.utils.table_to_book(tabla, { sheet: "Resumen" });
+        XLSX.writeFile(wb, "resumen.xlsx");
+      }
+    </script>
+
+    <script>
+      let resumenPorCP = [];
+      let ingresosData = [];
+      let chartResumen, chartEvolucion, chartTorta, chartPctDeuda;
+
+      /* Helpers de formato */
+      function formatoMillones(valor) {
+        return ((valor / 1_000_000).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + " M";
+      }
+      function formatoMoneda(valor) {
+        return valor.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+      }
+      function mostrarLoading(){ document.getElementById("loadingOverlay").style.display = "flex"; }
+      function ocultarLoading(){ document.getElementById("loadingOverlay").style.display = "none"; }
+
+      /* Vencimientos */
+    const VENC_UMBRAL_DIAS = 45;
+
+  function startOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function parseDDMMYYYY(str){
+    if(!str) return null;
+    const [dd,mm,yyyy]=str.split("/");
+    const d=new Date(+yyyy,(+mm)-1,+dd);
+    return isNaN(d)?null:startOfDay(d);
+  }
+  function diffDays(d1,d2){ if(!d1||!d2) return 0; const ms=startOfDay(d2)-startOfDay(d1); return Math.floor(ms/(1000*60*60*24)); }
+
+  // NUEVA: solo dos estados: VENCIDO / A VENCER
+  function calcularVencimientoAvanzado(periodoStr, fechaCpStr, categoria, hoy = new Date()){
+  // Helpers
+  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const toDMY = (s) => {
+    if (!s) return null;
+    const [dd,mm,yyyy] = String(s).split("/");
+    const d = new Date(+yyyy, (+mm)-1, +dd);
+    return isNaN(d) ? null : startOfDay(d);
+  };
+  const addDays = (d, n) => startOfDay(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n));
+  const diff = (a,b) => Math.floor((startOfDay(b) - startOfDay(a)) / 86400000);
+
+  const catUp = String(categoria || "").toUpperCase().trim();
+
+  // 1) Débitos: sin vencimiento
+  if (catUp === "DÉBITOS" || catUp === "DEBITOS") {
+    return { estado:"—", vencido:false, porVencer:false, diasAlVenc:0, diasExcedidos:0 };
+  }
+
+  // 2) Base y umbral
+  let base=null, umbral=0;
+  if (catUp === "GASTO DE FUNCIONAMIENTO") {
+    base = toDMY(periodoStr);
+    umbral = 10;
+  } else {
+    base = toDMY(fechaCpStr) || toDMY(periodoStr);
+    umbral = 30;
+  }
+
+  if (!base) {
+    // sin fechas válidas: no marcar vencido
+    return { estado:"A VENCER", vencido:false, porVencer:true, diasAlVenc:umbral, diasExcedidos:0 };
+  }
+
+  const hoy0 = startOfDay(hoy);
+  const fechaVenc = addDays(base, umbral);
+  const diasHastaVenc = diff(hoy0, fechaVenc); // >0 falta, <0 excedido
+
+  if (diasHastaVenc < 0) {
+    return { estado:"VENCIDO", vencido:true, porVencer:false, diasAlVenc:0, diasExcedidos:Math.abs(diasHastaVenc) };
+  }
+  return { estado:"A VENCER", vencido:false, porVencer:true, diasAlVenc:diasHastaVenc, diasExcedidos:0 };
+}
+
+      /* KPIs */
+    // Esquema 8 cols: [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado]
+function actualizarKPIs() {
+  const clienteFiltro = document.getElementById("clienteSelect").value;
+  const desde = document.getElementById("desde").value;
+  const hasta = document.getElementById("hasta").value;
+
+  let totalFacturado = 0;
+  let totalDebito = 0;
+  let totalAbonadoAsignado = 0;
+  let totalIngresoCUT = 0;
+  let pendVencido = 0;
+  let pendPorVencer = 0;
+
+  resumenPorCP.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
+    const fechaRef = new Date((periodo||"").split("/").reverse().join("/"));
+    const coincideCliente = !clienteFiltro || cli === clienteFiltro;
+    const coincideFechas = (!desde || fechaRef >= new Date(desde)) && (!hasta || fechaRef <= new Date(hasta));
+    if (!coincideCliente || !coincideFechas) return;
+
+    const fact = Number(facturado)||0;
+    const deb  = Number(debito)||0;
+    const abo  = Number(abonado)||0;
+
+    totalFacturado += fact;
+    totalDebito += deb;
+    totalAbonadoAsignado += abo;
+
+    const saldoPend = Math.max(0, fact - (deb + abo));
+
+    if (saldoPend > 0) {
+      const v = calcularVencimientoAvanzado(periodo, fechaCP, categoria);
+      if (v.vencido) pendVencido += saldoPend;
+      else pendPorVencer += saldoPend;
+    }
+  });
+
+  // Ingresos reales (CUT) desde la hoja de pagos
+  ingresosData.forEach(([cli, fechaStr, ingreso]) => {
+    const fecha = new Date((fechaStr||"").split("/").reverse().join("/"));
+    const coincideCliente = !clienteFiltro || cli === clienteFiltro;
+    const coincideFechas = (!desde || fecha >= new Date(desde)) && (!hasta || fecha <= new Date(hasta));
+    if (!coincideCliente || !coincideFechas) return;
+    totalIngresoCUT += Number(ingreso)||0;
+  });
+
+  const saldoTotal = totalFacturado - (totalDebito + totalAbonadoAsignado);
+
+  document.getElementById("kpiFacturado").innerText     = formatoMillones(totalFacturado);
+  document.getElementById("kpiAbonadoCUT").innerText    = formatoMillones(totalIngresoCUT);
+  document.getElementById("kpiPendVencido").innerText   = formatoMillones(pendVencido);
+  document.getElementById("kpiPendPorVencer").innerText = formatoMillones(pendPorVencer);
+  document.getElementById("kpiDebito").innerText        = formatoMillones(totalDebito);
+  document.getElementById("kpiSaldoTotal").innerText    = formatoMillones(saldoTotal);
+}
+
+      /* Clientes */
+      function cargarClientes() {
+        const select = document.getElementById("clienteSelect");
+        const clientes = [...new Set(resumenPorCP.map((r) => r[0]))].sort((a, b) => a.localeCompare(b));
+        select.innerHTML = '<option value="">Todos los clientes</option>';
+        clientes.forEach((cliente) => {
+          const option = document.createElement("option");
+          option.value = cliente; option.text = cliente; select.appendChild(option);
+        });
+      }
+
+      /* Ordenamiento */
+      const ordenAsc = { cliente: true, cp: true, periodo: true, fechaCP: true, facturado: true, debito: true, abonado: true, saldo: true };
+
+function ordenarTablaPorColumna(idxCol) {
+  const keyByIdx = {0:"cliente",1:"cp",2:"importe",3:"periodo",4:"fechaCP",6:"debito",7:"abonado",8:"saldo"};
+  const key = keyByIdx[idxCol];
+  if (!key) return;
+
+  const objs = resumenPorCP.map(r => {
+    const [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado] = r;
+    return {
+      cliente, cp, periodo, fechaCP, categoria,
+      importe: Number(facturado)||0,
+      debito:  Number(debito)||0,
+      abonado: Number(abonado)||0,
+      saldo:   (Number(abonado)||0) + (Number(debito)||0) - (Number(facturado)||0)
+    };
+  });
+
+  const dir = ordenAsc[key] ? 1 : -1;
+  objs.sort((a,b) => {
+    if (key === "periodo" || key === "fechaCP") {
+      const da = new Date((a[key]||"").split("/").reverse().join("/"));
+      const db = new Date((b[key]||"").split("/").reverse().join("/"));
+      return (da - db) * dir;
+    }
+    if (typeof a[key] === "string") return a[key].localeCompare(b[key]) * dir;
+    return (a[key] - b[key]) * dir;
+  });
+
+  ordenAsc[key] = !ordenAsc[key];
+  resumenPorCP = objs.map(o => [o.cliente, o.cp, o.periodo, o.fechaCP, o.categoria, o.importe, o.debito, o.abonado]);
+  renderTablaResumen();
+}
+      function agregarSortListener() {
+        document.querySelectorAll("#tablaResumen table th").forEach((th) => {
+          th.addEventListener("click", () => {
+            const columna = parseInt(th.getAttribute("data-col"));
+            if (!isNaN(columna)) ordenarTablaPorColumna(columna);
+          });
+        });
+      }
+
+      /* Render tabla con filtros, badges y minibarra */
+      function aplicarFiltro() {
+        mostrarLoading();
+        setTimeout(() => {
+          renderTablaResumen();
+          renderGraficos();
+          actualizarKPIs();
+          ocultarLoading();
+        }, 50);
+      }
+
+      function renderTablaResumen() {
+  const clienteFiltro = document.getElementById("clienteSelect").value;
+  const desde = document.getElementById("desde").value;
+  const hasta = document.getElementById("hasta").value;
+  const soloVencidos = document.getElementById("soloVencidos")?.checked;
+  const soloPorVencer = document.getElementById("soloPorVencer")?.checked;
+
+  const tablaDiv = document.getElementById("tablaResumen");
+
+  // Filtro base (usa Período como referencia de fecha)
+  const filtrado = resumenPorCP.filter(([cli, cp, periodo]) => {
+    const fecha = new Date((periodo||"").split("/").reverse().join("/"));
+    const coincideCliente = !clienteFiltro || cli === clienteFiltro;
+    const coincideFechas = (!desde || fecha >= new Date(desde)) && (!hasta || fecha <= new Date(hasta));
+    return coincideCliente && coincideFechas;
+  });
+
+  if (!filtrado.length) {
+    tablaDiv.innerHTML = `<p>No hay resultados para ese filtro.</p>`;
+    return;
+  }
+
+  // Agrupar por cliente
+  const porCliente = {};
+  filtrado.forEach(r => {
+    const cli = r[0];
+    (porCliente[cli] ||= []).push(r);
+  });
+
+  // Cabecera NUEVA
+  let html = `
+    <table>
+      <thead>
+        <tr>
+          <th data-col="0">Cliente</th>
+          <th data-col="1">CP</th>
+          <th data-col="2">Facturado</th>
+          <th data-col="3">Período</th>
+          <th data-col="4">Fecha CP</th>
+          <th>(Vencido | A vencer)</th>
+          <th data-col="6">Débito/Reintegros</th>
+          <th data-col="7">Cobrado</th>
+          <th data-col="8">Saldo Pendiente</th>
+          <th>Vencimiento</th>
+          <th>Detalle venc.</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  // Totales globales
+  let totImporte = 0, totDebito = 0, totAbonado = 0, totSaldo = 0, totVenc = 0, totPorVenc = 0;
+
+  Object.keys(porCliente).sort().forEach(cliente => {
+    const filas = porCliente[cliente];
+
+    // Subtotales por cliente
+    let subImporte = 0, subDebito = 0, subAbonado = 0, subSaldo = 0, subVenc = 0, subPorVenc = 0;
+
+    // Precalcular subtotales
+    filas.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
+      const fact = Number(facturado)||0;
+      const deb  = Number(debito)||0;
+      const abo  = Number(abonado)||0;
+      const saldoPend = Math.max(0, fact - (deb + abo));
+      subImporte += fact;
+      subDebito  += deb;
+      subAbonado += abo;
+      subSaldo   += (abo + deb - fact);
+
+      if (saldoPend > 0) {
+        const v = calcularVencimientoAvanzado(periodo, fechaCP, categoria);
+        if (v.vencido) subVenc += saldoPend;
+        else subPorVenc += saldoPend;
+      }
+    });
+
+    const clave = cliente.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_");
+
+    // Header del cliente
+    html += `
+      <tr class="client-header" data-cliente="${clave}" style="background-color:#e8f1ff; font-weight:bold;">
+        <td class="cliente-cell">▶ ${cliente}</td>
+        <td></td>
+        <td>${formatoMoneda(subImporte)}</td>
+        <td></td>
+        <td></td>
+        <td>
+          <div class="fact2col" title="Vencido | A vencer">
+            <div class="fact-box fact-left">${formatoMoneda(subVenc)}</div>
+            <div class="fact-box fact-right">${formatoMoneda(subPorVenc)}</div>
+          </div>
+        </td>
+        <td class="${subDebito<0?'negativo':''}">${formatoMoneda(subDebito)}</td>
+        <td class="${subAbonado<0?'negativo':''}">${formatoMoneda(subAbonado)}</td>
+        <td class="${subSaldo<0?'negativo':''}">${formatoMoneda(subSaldo)}</td>
+        <td></td>
+        <td></td>
+      </tr>
+    `;
+
+    // Filas detalle
+    filas.forEach(row => {
+      const [cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado] = row;
+      const fact = Number(facturado)||0;
+      const deb  = Number(debito)||0;
+      const abo  = Number(abonado)||0;
+
+      const saldo = abo + deb - fact;
+      const saldoPend = Math.max(0, fact - (deb + abo));
+
+      // Etiquetas de abono
+      let etiquetaAbono = '';
+      if (saldoPend === 0) {
+        etiquetaAbono = `<span class="badge badge-ok" style="margin-left:6px;">abonado total</span>`;
+      } else if (abo > 0) {
+        etiquetaAbono = `<span class="badge badge-warn" style="margin-left:6px;">abonado parcial</span>`;
+      }
+
+      // Vencimiento (solo si hay saldo pendiente)
+      let badgeVenc = '', detalleVenc = '', rowClass = '';
+      if (saldoPend > 0) {
+        const v = calcularVencimientoAvanzado(periodo, fechaCP, categoria);
+        const catUp = String(categoria||"").toUpperCase();
+        if (catUp === 'DÉBITOS' || catUp === 'DEBITOS') {
+          badgeVenc = `<span class="badge badge-ok">—</span>`;
+          detalleVenc = `Sin vencimiento (Débito)`;
+        } else if (v.vencido) {
+          badgeVenc = `<span class="badge badge-danger">VENCIDO</span>`;
+          detalleVenc = `Vencido hace ${v.diasExcedidos} d`;
+          rowClass = 'row-vencido';
+        } else {
+          badgeVenc = `<span class="badge badge-warn">A VENCER</span>`;
+          detalleVenc = `Vence en ${v.diasAlVenc} d`;
+          rowClass = 'row-porvencer';
+        }
+      }
+
+      // (Vencido | A vencer) — mostramos solo el saldo pendiente distribuido
+      const vencidoPart   = (saldoPend>0 && badgeVenc.includes('VENCIDO')) ? saldoPend : 0;
+      const porVencerPart = (saldoPend>0 && badgeVenc.includes('A VENCER')) ? saldoPend : 0;
+
+      html += `
+        <tr class="detail-row ${rowClass}" data-cliente="${clave}" style="display:none;">
+          <td>${cli}</td>
+          <td>${cp}</td>
+          <td>${formatoMoneda(fact)}</td>
+          <td>${periodo || ""}</td>
+          <td>${fechaCP || ""}</td>
+          <td>
+            <div class="fact2col" title="Vencido | A vencer">
+              <div class="fact-box fact-left">${formatoMoneda(vencidoPart)}</div>
+              <div class="fact-box fact-right">${formatoMoneda(porVencerPart)}</div>
+            </div>
+          </td>
+          <td class="${deb < 0 ? "negativo" : ""}">${formatoMoneda(deb)}</td>
+          <td class="${abo < 0 ? "negativo" : ""}">${formatoMoneda(abo)}</td>
+          <td class="${saldo < 0 ? "negativo" : ""}">${formatoMoneda(saldo)}</td>
+          <td>${badgeVenc}${etiquetaAbono}</td>
+          <td>${detalleVenc}</td>
+        </tr>
+      `;
+    });
+
+    // Acumular totales
+    totImporte += subImporte;
+    totDebito  += subDebito;
+    totAbonado += subAbonado;
+    totSaldo   += subSaldo;
+    totVenc    += subVenc;
+    totPorVenc += subPorVenc;
+  });
+
+  // Fila TOTAL (colspan en las primeras 5 columnas)
+  html += `
+      <tr class="total" style="background-color:#cde9f9; font-weight:bold; border-top: 3px double #007bff;">
+        <td colspan="2">TOTAL</td>
+        <td>${formatoMoneda(totImporte)}</td>
+        <td></td>
+        <td></td>
+        <td>
+          <div class="fact2col" title="Vencido | A vencer">
+            <div class="fact-box fact-left">${formatoMoneda(totVenc)}</div>
+            <div class="fact-box fact-right">${formatoMoneda(totPorVenc)}</div>
+          </div>
+        </td>
+        <td class="${totDebito<0?'negativo':''}">${formatoMoneda(totDebito)}</td>
+        <td class="${totAbonado<0?'negativo':''}">${formatoMoneda(totAbonado)}</td>
+        <td class="${totSaldo<0?'negativo':''}">${formatoMoneda(totSaldo)}</td>
+        <td></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>`;
+
+  tablaDiv.innerHTML = html;
+
+  // Toggle por cliente
+  document.querySelectorAll(".client-header").forEach((header) => {
+    header.addEventListener("click", () => {
+      const clave = header.getAttribute("data-cliente");
+      const filasDetalle = document.querySelectorAll(`.detail-row[data-cliente="${clave}"]`);
+      let algunaVisible = false;
+      filasDetalle.forEach((r) => {
+        if (r.style.display === "none") { r.style.display = ""; algunaVisible = true; }
+        else { r.style.display = "none"; }
+      });
+      const celdaCliente = header.querySelector("td.cliente-cell");
+      celdaCliente.innerText = celdaCliente.innerText.replace(/^([▶▼])/, algunaVisible ? "▼" : "▶");
+    });
+  });
+
+  // Activar sort
+  agregarSortListener();
+}
+
+
+      /* Gráficos – reusa tu lógica original */
+      function renderGraficos() {
+  [chartResumen, chartEvolucion, chartTorta].forEach((c) => c?.destroy());
+
+  const cliente = document.getElementById("clienteSelect").value;
+  const desde = document.getElementById("desde").value;
+  const hasta = document.getElementById("hasta").value;
+
+  // Esquema 8 cols
+  const filtrado = resumenPorCP.filter(([cli, cp, periodo]) => {
+    const fecha = new Date((periodo||"").split("/").reverse().join("/"));
+    return (!cliente || cli === cliente) &&
+           (!desde || fecha >= new Date(desde)) &&
+           (!hasta || fecha <= new Date(hasta));
+  });
+
+  let totalFacturado = 0, totalDebito = 0, totalAbonado = 0;
+  const mensual = {};
+  filtrado.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
+    const mes = (periodo||"").slice(3); // "MM/YYYY" -> funciona si tu formatPeriodo_ devuelve "01/MM/YYYY"
+    mensual[mes] = mensual[mes] || { facturado: 0, abonado: 0 };
+    mensual[mes].facturado += Number(facturado)||0;
+    mensual[mes].abonado   += Number(abonado)||0;
+
+    totalFacturado += Number(facturado)||0;
+    totalDebito    += Number(debito)||0;
+    totalAbonado   += Number(abonado)||0;
+  });
+
+  const facturadoM = totalFacturado / 1_000_000;
+  const debitoM    = totalDebito / 1_000_000;
+  const abonadoM   = totalAbonado / 1_000_000;
+  const saldoM     = (totalAbonado + totalDebito - totalFacturado) / 1_000_000;
+
+        const ctxResumen = document.getElementById("chartResumen");
+        chartResumen = new Chart(ctxResumen, {
+          type: "bar",
+          data: {
+            labels: ["Facturado", "Débito/Reintegros", "Cobrado", "Saldo"],
+            datasets: [{ label: "Montos (millones)", data: [facturadoM, debitoM, abonadoM, saldoM],
+              backgroundColor: [
+                "rgba(54, 162, 235, 0.8)",
+                "rgba(255, 206, 86, 0.8)",
+                "rgba(67, 160, 71, 0.8)",
+                saldoM < 0 ? "rgba(255, 0, 0, 0.8)" : "rgba(255, 99, 132, 0.8)",
+              ], }],
+          },
+          options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} M` } } }, scales: { y: { beginAtZero: true, ticks: { callback: (val) => val.toFixed(2) + " M" } } } }
+        });
+
+        const saldoPendiente = Math.max(totalFacturado - totalAbonado - totalDebito, 0);
+        const cobrado = totalAbonado; const debito = totalDebito; const totalTorta = saldoPendiente + cobrado + debito;
+        const porcentajeSaldo = totalTorta > 0 ? (saldoPendiente / totalTorta) * 100 : 0;
+        const porcentajeCobrado = totalTorta > 0 ? (cobrado / totalTorta) * 100 : 0;
+        const porcentajeDebito = totalTorta > 0 ? (debito / totalTorta) * 100 : 0;
+
+        const ctxTorta = document.getElementById("chartTorta");
+        chartTorta = new Chart(ctxTorta, {
+          type: "doughnut",
+          data: { labels: [
+              `Saldo Pendiente (${porcentajeSaldo.toFixed(1)}%)`,
+              `Cobrado (${porcentajeCobrado.toFixed(1)}%)`,
+              `Débito/Reintegros (${porcentajeDebito.toFixed(1)}%)`,
+            ],
+            datasets: [{ data: [saldoPendiente, cobrado, debito], backgroundColor: [
+              "rgba(255, 99, 132, 0.7)","rgba(67, 160, 71, 0.7)","rgba(54, 162, 235, 0.7)"] }],
+          },
+          options: { cutout: "70%", plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString("es-AR",{ maximumFractionDigits:2 })} (${((ctx.raw/totalTorta)*100).toFixed(1)}%)` } } } }
+        });
+
+          // Agrupar por YYYY-MM usando "periodo" (formato dd/mm/yyyy)
+  const byYM = new Map();
+  // Esquema 8 cols: [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado]
+  filtrado.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
+    const [dd, mm, yy] = String(periodo || "").split("/");
+    if (!yy || !mm) return;
+    const ymKey = `${yy}-${mm.padStart(2,"0")}`;
+    if (!byYM.has(ymKey)) byYM.set(ymKey, { fact:0, cob:0 });
+    const it = byYM.get(ymKey);
+    it.fact += Number(facturado)||0;
+    it.cob  += Number(abonado)||0;
+  });
+
+  // Orden cronológico
+  const keysYM = Array.from(byYM.keys()).sort((a,b) => {
+    const [ya,ma] = a.split("-").map(Number);
+    const [yb,mb] = b.split("-").map(Number);
+    return ya === yb ? ma - mb : ya - yb;
+  });
+
+// Etiquetas del eje X: solo meses (año se muestra en las bandas)
+const MESES_MIN = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const labels = keysYM.map(k => {
+  const [, m] = k.split("-").map(Number);
+  return MESES_MIN[m - 1];
+});
+
+// === Construir bandas por año (índices de inicio/fin en keysYM)
+const yearGroups = [];
+{
+  let currentYear = null;
+  let startIdx = 0;
+  keysYM.forEach((k, i) => {
+    const [y, m] = k.split("-").map(Number);
+    if (currentYear === null) { currentYear = y; startIdx = i; }
+    if (y !== currentYear) {
+      yearGroups.push({ year: currentYear, start: startIdx, end: i - 1 });
+      currentYear = y;
+      startIdx = i;
+    }
+    if (i === keysYM.length - 1) {
+      yearGroups.push({ year: currentYear, start: startIdx, end: i });
+    }
+  });
+}
+  const dataFact = keysYM.map(k => byYM.get(k).fact/1_000_000);
+  const dataCob  = keysYM.map(k => byYM.get(k).cob /1_000_000);
+// === Plugin: dibuja bandas por año detrás del chart
+const YearBandsPlugin = {
+  id: 'yearBands',
+  beforeDatasetsDraw(chart, args, pluginOptions) {
+    const { ctx, chartArea, scales } = chart;
+    if (!scales.x || !yearGroups.length) return;
+
+    const xScale = scales.x;
+    const yScale = scales.y;
+
+    // Altura de la banda (solo detrás del área del chart)
+    const top = chartArea.top;
+    const bottom = chartArea.bottom;
+
+    // Estética
+    const colors = pluginOptions?.colors || [
+      'rgba(0,0,0,0.03)', 'rgba(0,0,0,0.06)' // alternar leve
+    ];
+    const borderColor = pluginOptions?.borderColor || 'rgba(0,0,0,0.15)';
+    const textColor = pluginOptions?.textColor || '#333';
+    const radius = 8; // esquinas redondeadas
+    const padding = 6; // margen interno para texto
+
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = '12px Segoe UI, Roboto, sans-serif';
+
+    yearGroups.forEach((g, idx) => {
+      // x de inicio/fin con un pequeño padding visual entre barras
+      const x0 = xScale.getPixelForValue(g.start) - (xScale.getPixelForValue(g.start+1) - xScale.getPixelForValue(g.start)) * 0.35;
+      const x1 = xScale.getPixelForValue(g.end)   + (xScale.getPixelForValue(g.end)  - xScale.getPixelForValue(g.end-1 || g.end)) * 0.35;
+
+      // Banda
+      ctx.fillStyle = colors[idx % colors.length];
+      roundRect(ctx, x0, top, x1 - x0, (bottom - top), radius);
+      ctx.fill();
+
+      // Borde sutil
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = 1;
+      roundRect(ctx, x0, top, x1 - x0, (bottom - top), radius);
+      ctx.stroke();
+
+      // Etiqueta del año (arriba-izquierda dentro de la banda)
+      ctx.fillStyle = textColor;
+      ctx.fillText(String(g.year), x0 + padding, top + padding);
+    });
+
+    ctx.restore();
+
+    // Helper local para rectángulos redondeados
+    function roundRect(ctx, x, y, w, h, r){
+      const rr = Math.min(r, w/2, h/2);
+      ctx.beginPath();
+      ctx.moveTo(x+rr, y);
+      ctx.arcTo(x+w, y,   x+w, y+h, rr);
+      ctx.arcTo(x+w, y+h, x,   y+h, rr);
+      ctx.arcTo(x,   y+h, x,   y,   rr);
+      ctx.arcTo(x,   y,   x+w, y,   rr);
+      ctx.closePath();
+    }
+  }
+};
+  const ctxEvolucion = document.getElementById("chartEvolucion");
+  chartEvolucion = new Chart(ctxEvolucion, {
+  type: "line",
+  data: {
+    labels,
+    datasets: [
+      {
+        label: "Facturación",
+        data: dataFact,
+        borderColor: "rgba(255,99,132,0.9)",
+        backgroundColor: "rgba(255,99,132,0.2)",
+        fill: false,
+        tension: .2
+      },
+      {
+        label: "Cobrado",
+        data: dataCob,
+        borderColor: "rgba(67,160,71,0.9)",
+        backgroundColor: "rgba(67,160,71,0.2)",
+        fill: false,
+        tension: .2
+      }
+    ],
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: "bottom" },
+      tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} M` } },
+      // Opcional: estilos del plugin
+      yearBands: {
+        colors: ['rgba(0,0,0,0.03)','rgba(0,0,0,0.06)'],
+        borderColor: 'rgba(0,0,0,0.15)',
+        textColor: '#333'
+      }
+    },
+    scales: {
+      x: {
+        ticks: {
+          callback: function(value) { return this.getLabelForValue(value); },
+          maxRotation: 0,
+          autoSkip: false
+        }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { callback: (val) => `${Number(val).toFixed(2)} M` }
+      }
+    }
+  },
+  plugins: [YearBandsPlugin] // <<--- importante: registrar el plugin en este chart
+});
+      }
+
+      /* % Deuda / Facturación (idéntico a tu versión) */
+      function renderPorcentajeDeuda() {
+  // Esquema: [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado]
+  const porCliente = new Map();
+
+  resumenPorCP.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
+    // (Opcional) excluir ciertos clientes:
+    // if (cli === "PAMI" || cli === "DIRECCIÓN GRAL SALUD") return;
+
+    const fact = Number(facturado)||0;
+    const deb  = Number(debito)||0;
+    const abo  = Number(abonado)||0;
+
+    if (!porCliente.has(cli)) porCliente.set(cli, { totalFact:0, totalPend:0 });
+    const agg = porCliente.get(cli);
+
+    // Sumamos facturación positiva
+    if (fact > 0) {
+      agg.totalFact += fact;
+      const saldoCp = fact - (abo + deb);   // saldo pendiente del CP
+      if (saldoCp > 0) agg.totalPend += saldoCp;
+    }
+  });
+
+  // Transformar a array y calcular % (solo clientes con facturación > 0)
+  const arr = Array.from(porCliente.entries())
+    .filter(([,v]) => v.totalFact > 0)
+    .map(([cliente, v]) => ({
+      cliente,
+      pct: (v.totalPend / v.totalFact) * 100
+    }))
+    .sort((a,b) => b.pct - a.pct);
+
+  const etiquetas = arr.map(x => x.cliente);
+  const dataPct   = arr.map(x => Number(x.pct.toFixed(2)));
+
+  const ctx = document.getElementById("chartPorcentajeDeuda").getContext("2d");
+  if (window.chartPctDeuda) window.chartPctDeuda.destroy();
+  window.chartPctDeuda = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: etiquetas,
+      datasets: [{
+        label: "% Deuda / Facturación",
+        data: dataPct,
+        backgroundColor: "rgba(255, 99, 132, 0.7)",
+        borderColor: "rgba(255, 99, 132, 1)",
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 }
+        },
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { callback: (v) => v + "%" }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString("es-AR",{ minimumFractionDigits:2, maximumFractionDigits:2 })} %`
+          }
+        },
+        legend: { position: "top" }
+      }
+    }
+  });
+}
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const tabLinks = document.querySelectorAll(".tabs-header .tab-link");
+        const tabContents = document.querySelectorAll(".tab-content");
+        tabLinks.forEach((link) => {
+          link.addEventListener("click", () => {
+            const targetTabId = link.getAttribute("data-tab");
+            tabLinks.forEach((l) => l.classList.remove("active"));
+            tabContents.forEach((c) => c.classList.remove("active"));
+            link.classList.add("active");
+            document.getElementById(targetTabId).classList.add("active");
+            if (targetTabId === "tabPctDeuda") renderPorcentajeDeuda();
+          });
+        });
+      });
+      
+document.addEventListener("DOMContentLoaded", () => {
+  google.script.run.withSuccessHandler((data) => {
+    // NUEVO esquema esperado por fila:
+    // [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado]
+    // Consolidamos por (cliente|cp) sumando montos. Para fechaCP tomamos la primera no vacía.
+    resumenPorCP = Array.from(
+      data.reduce((map, row) => {
+        const [cli, cp, periodo, fechaCP, categoria, fact, deb, abo] = row;
+        const k = `${cli}|${cp}`;
+        if (!map.has(k)) map.set(k, {
+          cliente: cli,
+          cp,
+          periodo,
+          fechaCP: fechaCP || "",
+          categoria: categoria || "",
+          facturado: 0, debito: 0, abonado: 0
+        });
+        const it = map.get(k);
+        it.facturado += Number(fact) || 0;
+        it.debito    += Number(deb)  || 0;
+        it.abonado   += Number(abo)  || 0;
+        // conservar la primera fechaCP válida si no estaba
+        if (!it.fechaCP && fechaCP) it.fechaCP = fechaCP;
+        // si alguna línea marca GASTO DE FUNCIONAMIENTO, priorizala; luego Débitos; sino hospitalarios
+        const cat = (categoria || "").toUpperCase();
+        const rank = { "GASTO DE FUNCIONAMIENTO": 2, "DÉBITOS": 1, "DEBITOS": 1, "GASTOS HOSPITALARIOS": 0 };
+        const curr = (it.categoria || "").toUpperCase();
+        if (!curr || (rank[cat] ?? 0) > (rank[curr] ?? 0)) it.categoria = categoria;
+        return map;
+      }, new Map()).values()
+    ).map(v => [v.cliente, v.cp, v.periodo, v.fechaCP, v.categoria, v.facturado, v.debito, v.abonado]);
+
+    google.script.run.withSuccessHandler((ingData) => {
+      ingresosData = ingData; // [cliente, fechaStr, ingreso]
+      cargarClientes();
+      aplicarFiltro();
+      renderGraficos();
+      actualizarKPIs();
+      renderPorcentajeDeuda();
+    }).obtenerIngresos();
+  }).obtenerResumenPorCP();
+});
+    function activarVista(selector) {
+  const tabs = document.querySelectorAll('.app-tab');
+  const vistas = ['#vista-actual', '#vista-nueva', '#vista-alquileres']; // ← añade esta
+
+  vistas.forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) el.classList.toggle('hidden', sel !== selector);
+  });
+
+  tabs.forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-target') === selector);
+  });
+
+  if (window.lucide?.createIcons) lucide.createIcons();
+}
+
+  document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.app-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-target');
+      activarVista(target);
+      localStorage.setItem('appView', target);
+    });
+  });
+
+  // Mostrar SIEMPRE la vista actual al iniciar
+  const last = localStorage.getItem('appView') || '#vista-actual';
+activarVista(last);
+});
+/* =========================
+   RECURSOS – FRONTEND
+   ========================= */
+
+(function(){
+  // Estado local
+  let RECURSOS = []; // [{idCliente, cliente, fecha: Date, nroCpte, detalle, percibido}]
+  let charts = { top:null, evol:null, torta:null };
+
+  // Helpers (reusa si ya existen)
+  const fmtMon = (v) => (window.formatoMoneda ? formatoMoneda(v) :
+    v.toLocaleString("es-AR", { style:"currency", currency:"ARS" }));
+  const parseISOorDMY = (s) => {
+    // Esperamos dd/mm/yyyy en Datos .gs, pero soportamos ISO por dudas
+    if (!s) return null;
+    if (s.includes("-")) return new Date(s);
+    const [dd,mm,yy] = s.split("/");
+    return new Date(+yy, (+mm)-1, +dd);
+  };
+
+  // ===== Carga inicial de datos de Recursos (procesados en servidor) =====
+  document.addEventListener("DOMContentLoaded", () => {
+    // Sólo inicializar cuando la vista nueva se active por primera vez
+    const initOnce = () => {
+      if (initOnce._did) return;
+      initOnce._did = true;
+      // Mostrar overlay global si existe (no lo tocamos ni asumimos su presencia)
+      if (window.mostrarLoading) mostrarLoading();
+
+      google.script.run
+        .withSuccessHandler((rows) => {
+          // rows esperado: [idCliente, cliente, fechaStr(dd/mm/yyyy), nroCpte, detalle, percibido]
+          RECURSOS = rows.map(r => ({
+            idCliente: String(r[0]),
+            cliente: String(r[1]),
+            fecha: parseISOorDMY(r[2]),
+            nroCpte: String(r[3]),
+            detalle: String(r[4] ?? ""),
+            percibido: Number(r[5] || 0)
+          }));
+          buildRecursosUI();
+          if (window.ocultarLoading) ocultarLoading();
+        })
+        .withFailureHandler(err => {
+          console.error("Error obtenerRecursosProcesados:", err);
+          if (window.ocultarLoading) ocultarLoading();
+          alert("No se pudieron cargar los Recursos.");
+        })
+        .obtenerRecursosProcesados();
+    };
+
+// Formato contabilidad: negativos entre paréntesis
+const fmtMonContab = (v) => {
+  const abs = Math.abs(Number(v) || 0);
+  const n = abs.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+  return (v < 0) ? `(${n})` : n;
+};
+    // Disparar init cuando el usuario abra la vista-nueva por primera vez
+    const obs = new MutationObserver(() => {
+      const v = document.querySelector("#vista-nueva");
+      if (v && !v.classList.contains("hidden")) {
+        initOnce();
+        obs.disconnect();
+      }
+    });
+    obs.observe(document.body, { attributes:true, childList:true, subtree:true });
+
+    // Si ya está visible por defecto
+    const alreadyVisible = document.querySelector("#vista-nueva") && 
+                           !document.querySelector("#vista-nueva").classList.contains("hidden");
+    if (alreadyVisible) initOnce();
+  });
+
+  // ===== Construcción UI
+  function buildRecursosUI(){
+    cargarClientesSelect();
+    hookFiltros();
+    renderTabla();
+    renderKPIs();
+    renderCharts();
+    lucide?.createIcons?.();
+  }
+
+function cargarClientesSelect(){
+  const sel = document.getElementById("recClienteSelect");
+  const clientes = Array.from(new Set(RECURSOS.map(x => x.cliente))).sort((a,b)=> a.localeCompare(b, 'es'));
+  sel.innerHTML = `<option value="">Todos</option>` + clientes.map(c => `<option value="${c}">${c}</option>`).join("");
+}
+
+  function filtros(){
+  const sel = document.getElementById("recClienteSelect").value; // nombre de cliente
+  const d = document.getElementById("recDesde").value ? new Date(document.getElementById("recDesde").value) : null;
+  const h = document.getElementById("recHasta").value ? new Date(document.getElementById("recHasta").value) : null;
+  return RECURSOS.filter(r => {
+    const matchCli = !sel || r.cliente === sel;
+    const matchFe = (!d || r.fecha >= d) && (!h || r.fecha <= h);
+    return matchCli && matchFe;
+  });
+}
+
+
+  function hookFiltros(){
+    document.getElementById("recAplicarBtn").addEventListener("click", () => {
+      if (window.mostrarLoading) mostrarLoading();
+      setTimeout(() => {
+        renderTabla();
+        renderKPIs();
+        renderCharts();
+        if (window.ocultarLoading) ocultarLoading();
+      }, 0);
+    });
+
+    document.getElementById("recExcelBtn").addEventListener("click", exportarExcelRecursos);
+    document.getElementById("recPrintBtn").addEventListener("click", imprimirRecursos);
+
+    // Tabs internas (gráficos)
+    const links = document.querySelectorAll("#recTabsHeader .tab-link");
+    const tabs = document.querySelectorAll("#recTabResumen, #recTabEvol, #recTabTorta");
+    links.forEach(l => l.addEventListener("click", () => {
+      links.forEach(x => x.classList.remove("active"));
+      tabs.forEach(x => x.classList.remove("active"));
+      l.classList.add("active");
+      document.getElementById(l.dataset.tab).classList.add("active");
+      lucide?.createIcons?.();
+    }));
+  }
+
+  // ===== Tabla con subtotales por cliente
+  function renderTabla(){
+  const data = filtros();
+  const div = document.getElementById("tablaRecursos");
+  if (!div) return;
+
+  // Helper local por si no definiste fmtMonContab afuera
+  const fmtMonContab = (v) => {
+    const n = Math.abs(Number(v) || 0).toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+    return (v < 0) ? `(${n})` : n;
+  };
+
+  if (!data.length){
+    div.innerHTML = `<p>No hay depósitos para ese filtro.</p>`;
+    return;
+  }
+
+  // Agrupar por NOMBRE de cliente (sin ID)
+  const byCli = new Map();
+  data.forEach(r => {
+    const k = r.cliente || "—";
+    if (!byCli.has(k)) byCli.set(k, []);
+    byCli.get(k).push(r);
+  });
+
+  let total = 0;
+  let html = `
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Fecha</th>
+          <th>Nro. Cpte</th>
+          <th>Detalle</th>
+          <th>Percibido</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  const clientes = Array.from(byCli.keys()).sort((a,b)=> a.localeCompare(b,'es'));
+  clientes.forEach(nombre => {
+    const key = encodeURIComponent(nombre);
+    const rows = byCli.get(nombre).sort((a,b)=> a.fecha - b.fecha);
+    const sub = rows.reduce((s,r)=> s + (Number(r.percibido)||0), 0);
+    total += sub;
+
+    // Header del cliente (click para expandir/colapsar)
+    html += `
+      <tr class="client-header" data-cli="${key}" style="background:#e8f1ff; font-weight:600; cursor:pointer;">
+        <td colspan="4">▶ ${nombre}</td>
+        <td class="num-cell ${sub<0?'negativo':''}">${fmtMonContab(sub)}</td>
+      </tr>
+    `;
+
+    // Filas detalle (ocultas inicialmente)
+    rows.forEach(r => {
+      const fechaTxt = r.fecha instanceof Date ? r.fecha.toLocaleDateString("es-AR") : (r.fecha || "");
+      html += `
+        <tr class="detail-row" data-cli="${key}" style="display:none;">
+          <td>${nombre}</td>
+          <td>${fechaTxt}</td>
+          <td>${r.nroCpte ?? ""}</td>
+          <td>${r.detalle ?? ""}</td>
+          <td class="num-cell ${r.percibido<0?'negativo':''}">${fmtMonContab(r.percibido)}</td>
+        </tr>
+      `;
+    });
+  });
+
+  // TOTAL final
+  html += `
+      <tr class="total" style="background:#cde9f9; font-weight:bold;">
+        <td colspan="4">TOTAL</td>
+        <td class="num-cell ${total<0?'negativo':''}">${fmtMonContab(total)}</td>
+      </tr>
+    </tbody>
+  </table>`;
+
+  div.innerHTML = html;
+
+  // Toggle expand/collapse por cliente
+  div.querySelectorAll(".client-header").forEach(head => {
+    head.addEventListener("click", () => {
+      const key = head.getAttribute("data-cli");
+      const rows = div.querySelectorAll(`.detail-row[data-cli="${key}"]`);
+
+      // ¿Está abierto? (alguna fila visible)
+      const abierto = Array.from(rows).some(r => r.style.display !== "none");
+
+      rows.forEach(r => r.style.display = abierto ? "none" : "");
+      // Cambiar el caret ▶ / ▼
+      const td = head.querySelector("td");
+      if (td) td.textContent = (abierto ? `▶ ` : `▼ `) + td.textContent.replace(/^.[\s]/, "");
+      // Reponer el nombre (por si el replace pisa algo raro)
+      const nombre = decodeURIComponent(key);
+      if (td) td.textContent = (abierto ? "▶ " : "▼ ") + nombre;
+    });
+  });
+}
+
+
+  // ===== KPIs
+function renderKPIs(){
+  const data = filtros();
+  const total = data.reduce((s,r)=> s + r.percibido, 0);
+
+  // Promedio mensual: usando meses "efectivos" (distintos YYYY-MM en los depósitos filtrados)
+  const ymSet = new Set(data.map(r => `${r.fecha.getFullYear()}-${String(r.fecha.getMonth()+1).padStart(2,"0")}`));
+  const mesesEfectivos = Math.max(1, ymSet.size);
+  const promMensual = total / mesesEfectivos;
+
+  // Sin identificar (idCliente === "9999")
+  const sinIdMonto = data.filter(r=> r.idCliente === "9999").reduce((s,r)=> s+r.percibido, 0);
+  const sinIdPct = total>0 ? (sinIdMonto/total)*100 : 0;
+
+  document.getElementById("kpiRecTotal").innerText   = fmtMon(total);
+  document.getElementById("kpiRecPromMes").innerText = fmtMon(promMensual);
+  document.getElementById("kpiRecSinId").innerText   = `${fmtMon(sinIdMonto)} (${sinIdPct.toFixed(1)}%)`;
+}
+
+
+// ===== Gráficos
+function renderCharts(){
+  // Destroy prev
+  Object.keys(charts).forEach(k => { charts[k]?.destroy?.(); charts[k]=null; });
+
+  const data = filtros();
+
+  // Top clientes (barras)
+  const porCli = new Map();
+  data.forEach(r => porCli.set(r.cliente, (porCli.get(r.cliente)||0) + r.percibido));
+  const top = Array.from(porCli.entries()).sort((a,b)=> b[1]-a[1]).slice(0,10);
+  const ctxTop = document.getElementById("chartRecTop").getContext("2d");
+  charts.top = new Chart(ctxTop, {
+    type:"bar",
+    data:{ labels: top.map(x=>x[0]), datasets:[{ label:"Percibido", data: top.map(x=>x[1]) }]},
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{ label:(c)=> fmtMon(c.parsed.y) }}},
+      scales:{ y:{ beginAtZero:true, ticks:{ callback:(v)=> fmtMon(v) } } }
+    }
+  });
+
+// === Evolución mensual (completa meses sin datos con 0) ===
+const byYM = new Map(); // YYYY-MM -> total percibido
+
+// 1) Agregar lo que sí hay
+data.forEach(r => {
+  if (!r.fecha) return;
+  const y = r.fecha.getFullYear();
+  const m = r.fecha.getMonth() + 1; // 1-12
+  const ymKey = `${y}-${String(m).padStart(2,"0")}`;
+  byYM.set(ymKey, (byYM.get(ymKey) || 0) + (Number(r.percibido) || 0));
+});
+
+// 2) Si no hay datos, limpiar gráfico y salir
+if (!data.length) {
+  const ctxEv = document.getElementById("chartRecEvol").getContext("2d");
+  charts.evol?.destroy?.();
+  charts.evol = new Chart(ctxEv, {
+    type: "line",
+    data: { labels: [], datasets: [{ label: "Percibido", data: [] }] },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+  });
+} else {
+  // 3) Determinar rango min/max de meses según los datos filtrados
+  const fechas = data.filter(r => r.fecha instanceof Date).map(r => r.fecha).sort((a,b)=> a-b);
+  const minD = fechas[0];
+  const maxD = fechas[fechas.length - 1];
+
+  // 4) Construir la lista completa de YYYY-MM entre min y max (inclusive)
+  const allKeys = [];
+  let y = minD.getFullYear();
+  let m = minD.getMonth() + 1; // 1-12
+  const yMax = maxD.getFullYear();
+  const mMax = maxD.getMonth() + 1;
+
+  while (y < yMax || (y === yMax && m <= mMax)) {
+    allKeys.push(`${y}-${String(m).padStart(2,"0")}`);
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+
+  // 5) Asegurar 0 en los meses sin datos
+  allKeys.forEach(k => { if (!byYM.has(k)) byYM.set(k, 0); });
+
+  // 6) Etiquetas mes abreviado (ene, feb, ...) y valores en orden
+  const MESES_MIN = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  const etiquetasMes = allKeys.map(k => {
+    const [, mm] = k.split("-").map(Number);
+    return MESES_MIN[mm - 1];
+  });
+  const valores = allKeys.map(k => byYM.get(k));
+
+  // 7) Dibujar
+  const ctxEv = document.getElementById("chartRecEvol").getContext("2d");
+  charts.evol?.destroy?.();
+  charts.evol = new Chart(ctxEv, {
+    type:"line",
+    data:{
+      labels: etiquetasMes,
+      datasets:[{
+        label:"Percibido",
+        data: valores,
+        fill:false,
+        tension:.2
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label:(c)=> fmtMon(c.parsed.y) } }
+      },
+      scales:{
+        x:{
+          ticks: {
+            maxRotation: 0,
+            autoSkip: false // ← muestra todos los meses del rango
+          }
+        },
+        y:{
+          beginAtZero:true,
+          ticks:{ callback:(v)=> fmtMon(v) }
+        }
+      }
+    }
+  });
+}
+  // ===== Torta: Top 10 + Otros (reusa porCli) =====
+  const total = data.reduce((s,r)=> s+r.percibido, 0);
+  const arr = Array.from(porCli.entries()).sort((a,b)=> b[1]-a[1]);
+
+  const top10 = arr.slice(0, 10);
+  const resto = arr.slice(10).reduce((s, [,v]) => s + v, 0);
+
+  const labels = top10.map(([cli, val]) => {
+    const pct = total > 0 ? (val/total)*100 : 0;
+    return `${cli} (${pct.toFixed(1)}%)`;
+  });
+  const values = top10.map(([_, val]) => val);
+
+  if (resto > 0) {
+    const pctOtros = total > 0 ? (resto/total)*100 : 0;
+    labels.push(`Otros (${pctOtros.toFixed(1)}%)`);
+    values.push(resto);
+  }
+
+  const ctxT = document.getElementById("chartRecTorta").getContext("2d");
+  charts.torta = new Chart(ctxT, {
+    type:"doughnut",
+    data:{ labels, datasets:[{ data: values }] },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{ position:"bottom" },
+        tooltip:{ callbacks:{ label:(c)=> {
+          const val = c.parsed;
+          const pct = total>0 ? (val/total)*100 : 0;
+          return `${c.label}: ${fmtMon(val)} (${pct.toFixed(1)}%)`;
+        }}}
+      }
+    }
+  });
+}
+
+
+  // ===== Exportar / Imprimir
+  function exportarExcelRecursos(){
+    const tabla = document.querySelector("#tablaRecursos table");
+    if (!tabla) return;
+    const wb = XLSX.utils.table_to_book(tabla, { sheet: "Recursos" });
+    XLSX.writeFile(wb, "recursos.xlsx");
+  }
+
+  function imprimirRecursos(){
+    const tablaHTML = document.getElementById("tablaRecursos").innerHTML;
+    const imgTop  = document.getElementById("chartRecTop").toDataURL();
+    const imgEvol = document.getElementById("chartRecEvol").toDataURL();
+    const imgTorta= document.getElementById("chartRecTorta").toDataURL();
+    const html = `
+      <html><head><title>Recursos</title>
+      <style>
+        body{ font-family:'Segoe UI',sans-serif; padding:20px; color:#000; }
+        h2{ margin-top:24px; }
+        table{ width:100%; border-collapse:collapse; font-size:12px; }
+        th,td{ border:1px solid #000; padding:6px; text-align:left; }
+        th{ background:#007bff; color:#fff; }
+        .grafico{ text-align:center; margin: 20px 0; }
+        .grafico img{ max-width:100%; height:auto; }
+        .total td{ font-weight:bold; background:#f0f0f0; }
+      </style></head><body>
+        <h2>Tabla de Recursos</h2>
+        ${tablaHTML}
+        <div class="grafico"><h2>Top Clientes</h2><img src="${imgTop}"></div>
+        <div class="grafico"><h2>Evolución Mensual</h2><img src="${imgEvol}"></div>
+        <div class="grafico"><h2>Identificación</h2><img src="${imgTorta}"></div>
+      </body></html>`;
+    const w = window.open("", "", "width=1024,height=768");
+    w.document.write(html); w.document.close(); w.focus(); w.print();
+  }
+})();
+/* =========================
+   ALQUILERES – FRONTEND
+   ========================= */
+(function(){
+  // Estado local
+  let RENTROLL = []; // filas .gs: [id, cliente, mesStr, cDesde, cHasta, impMens, prorr, esperado, percibido, diferencia, obs]
+  let charts = { evol:null, cumpl:null };
+  let INIT_DONE = false;
+
+  const MESES_MIN = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  const fmtMon = (v) => v.toLocaleString("es-AR", { style:"currency", currency:"ARS" });
+
+  // ====== CARGA INICIAL (al abrir la pestaña por 1ª vez) ======
+  function initOnce(){
+    if (INIT_DONE) return;
+    INIT_DONE = true;
+    toggleLoading(true);
+    const params = buildParams();
+    google.script.run
+      .withSuccessHandler(rows => {
+        RENTROLL = rows.map(r => ({
+          id: String(r[0]),
+          cliente: String(r[1]),
+          mesStr: String(r[2]),          // "01/mm/yyyy"
+          cDesde: String(r[3]||""),
+          cHasta: String(r[4]||""),
+          impMens: Number(r[5]||0),
+          prorr: !!r[6],
+          esperado: Number(r[7]||0),
+          percibido: Number(r[8]||0),
+          dif: Number(r[9]||0),
+          obs: String(r[10]||"")
+        }));
+        buildUI();
+        toggleLoading(false);
+      })
+      .withFailureHandler(err => {
+        console.error("calcularRentRollAlquileres:", err);
+        alert("No se pudo cargar Alquileres.");
+        toggleLoading(false);
+      })
+      .calcularRentRollAlquileres(params);
+  }
+
+  function toggleLoading(show){
+    const el = document.getElementById("alq-loading");
+    if (el) el.style.display = show ? "flex" : "none";
+  }
+
+  // ====== UI ======
+  function buildUI(){
+    cargarClientesSelect();
+    hookFiltros();
+    renderTodo();
+    lucide?.createIcons?.();
+  }
+
+  function buildParams(){
+    const d = document.getElementById("alqDesde")?.value;
+    const h = document.getElementById("alqHasta")?.value;
+    return {
+      desde: d || null,
+      hasta: h || null,
+      // includeOnlyIds: [] // si querés TODOS los de la hoja Contratos, descomentá y dejalo vacío
+    };
+  }
+
+  function filtros(){
+    const cli = document.getElementById("alqCliente")?.value || "";
+    const d = document.getElementById("alqDesde")?.value ? new Date(document.getElementById("alqDesde").value) : null;
+    const h = document.getElementById("alqHasta")?.value ? new Date(document.getElementById("alqHasta").value) : null;
+    const parseDMY = (s) => { const [dd,mm,yy]=s.split("/").map(Number); return new Date(yy, mm-1, dd); };
+
+    return RENTROLL.filter(r => {
+      const fMes = parseDMY(r.mesStr);
+      const okCli = !cli || r.cliente === cli;
+      const okD = !d || fMes >= d;
+      const okH = !h || fMes <= h;
+      return okCli && okD && okH;
+    });
+  }
+
+  function cargarClientesSelect(){
+    const sel = document.getElementById("alqCliente");
+    const clientes = Array.from(new Set(RENTROLL.map(x => x.cliente))).sort((a,b)=> a.localeCompare(b,'es'));
+    sel.innerHTML = `<option value="">Todos</option>` + clientes.map(c=> `<option value="${c}">${c}</option>`).join("");
+  }
+
+  function hookFiltros(){
+    document.getElementById("alqAplicar")?.addEventListener("click", () => {
+      // recargar del server si querés que d/h recorten en backend:
+      toggleLoading(true);
+      google.script.run
+        .withSuccessHandler(rows => {
+          RENTROLL = rows.map(r => ({
+            id: String(r[0]), cliente: String(r[1]), mesStr: String(r[2]),
+            cDesde: String(r[3]||""), cHasta: String(r[4]||""),
+            impMens: Number(r[5]||0), prorr: !!r[6],
+            esperado: Number(r[7]||0), percibido: Number(r[8]||0),
+            dif: Number(r[9]||0), obs: String(r[10]||"")
+          }));
+          renderTodo();
+          toggleLoading(false);
+        })
+        .withFailureHandler(err => { console.error(err); toggleLoading(false); })
+        .calcularRentRollAlquileres(buildParams());
+    });
+
+    document.getElementById("alqExcel")?.addEventListener("click", exportarExcel);
+    document.getElementById("alqPrint")?.addEventListener("click", imprimir);
+
+    // Tabs internas
+    const links = document.querySelectorAll("#alqTabsHeader .tab-link");
+    const tabs = document.querySelectorAll("#alqTabEvol, #alqTabCumpl");
+    links.forEach(l => l.addEventListener("click", () => {
+      links.forEach(x => x.classList.remove("active"));
+      tabs.forEach(x => x.classList.remove("active"));
+      l.classList.add("active");
+      document.getElementById(l.dataset.tab).classList.add("active");
+      lucide?.createIcons?.();
+    }));
+  }
+
+  function renderTodo(){
+    renderKPIs();
+    renderTabla();
+    renderCharts();
+  }
+
+  // ====== KPIs ======
+  function renderKPIs(){
+  const data = filtros();
+  const fmtMon = (v) => v.toLocaleString("es-AR", { style:"currency", currency:"ARS" });
+
+  // Fecha actual
+  const hoy = new Date();
+  const mesActual = hoy.getMonth();
+  const anioActual = hoy.getFullYear();
+
+  // 1️⃣ Total Percibido (todos los períodos)
+  const totalPerc = data.reduce((s,r)=> s + (Number(r.percibido)||0), 0);
+
+  // 2️⃣ Ingreso Mensual: solo las filas del mes/año actual
+  const totalEsperadoMes = data.reduce((s,r)=>{
+    if (!r.mesStr) return s;
+    const [dd,mm,yy] = r.mesStr.split("/").map(Number);
+    if (yy === anioActual && (mm-1) === mesActual) {
+      s += Number(r.esperado)||0;
+    }
+    return s;
+  }, 0);
+
+  // 3️⃣ Saldo Pendiente: diferencia por cliente
+  const byCli = new Map();
+  data.forEach(r => {
+    const k = r.cliente;
+    const agg = byCli.get(k) || { esp:0, perc:0 };
+    agg.esp  += Number(r.esperado)||0;
+    agg.perc += Number(r.percibido)||0;
+    byCli.set(k, agg);
+  });
+
+  const totalPend = Array.from(byCli.values())
+    .reduce((s,a) => s + Math.max(0, a.esp - a.perc), 0);
+
+  // Mostrar resultados
+  document.getElementById("alqKpiPercibido").innerText = fmtMon(totalPerc);
+  document.getElementById("alqKpiIngreso").innerText = fmtMon(totalEsperadoMes);
+  document.getElementById("alqKpiPendiente").innerText = fmtMon(totalPend);
+}
+
+  // ====== Tabla ======
+  function renderTabla(){
+  const data = filtros();
+  const div = document.getElementById("alqTabla");
+  if (!div) return;
+
+  if (!data.length) { 
+    div.innerHTML = `<p>No hay datos para ese filtro.</p>`; 
+    return; 
+  }
+
+  // Agrupar por cliente
+  const byCli = new Map();
+  data.forEach(r => {
+    if (!byCli.has(r.cliente)) byCli.set(r.cliente, []);
+    byCli.get(r.cliente).push(r);
+  });
+
+  const MESES_MIN = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  const fmtMon = (v) => v.toLocaleString("es-AR", { style:"currency", currency:"ARS" });
+
+  // Totales generales
+  let totalPercibido = 0;
+  let totalSaldoFinal = 0; // suma por cliente de max(0, totalEsperado - totalPercibido)
+
+  let html = `
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Mes</th>
+          <th>Importe mensual</th>
+          <th>Percibido</th>
+          <th>Saldo Pendiente</th>
+          <th>Obs.</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  // Orden alfabético de clientes
+  const clientes = Array.from(byCli.keys()).sort((a,b)=> a.localeCompare(b,'es'));
+  clientes.forEach(cli => {
+    // Orden cronológico por mes
+    const rows = byCli.get(cli).slice().sort((a,b) => {
+      const d = (x)=> { const [dd,mm,yy] = x.mesStr.split("/").map(Number); return new Date(yy,mm-1,dd); };
+      return d(a) - d(b);
+    });
+
+    // Totales por cliente
+    const subEsp  = rows.reduce((s,r)=> s + (Number(r.esperado)||0), 0);
+    const subPerc = rows.reduce((s,r)=> s + (Number(r.percibido)||0), 0);
+    const subPendHeader = Math.max(0, subEsp - subPerc); // <<---- lo que pediste
+
+    // Header del cliente (comprimido)
+    html += `
+      <tr class="client-header" style="background:#e8f1ff; font-weight:600; cursor:pointer;">
+        <td colspan="2">▶ ${cli}</td>
+        <td>${fmtMon(subEsp)}</td>
+        <td>${fmtMon(subPerc)}</td>
+        <td class="${subPendHeader>0?'negativo':''}">${fmtMon(subPendHeader)}</td>
+        <td></td>
+      </tr>
+    `;
+
+    // Saldo acumulativo por fila (se mantiene igual)
+    let running = 0;
+    rows.forEach(r => {
+      running = Math.max(0, running + ((Number(r.esperado)||0) - (Number(r.percibido)||0)));
+
+      const [dd, mm, yy] = r.mesStr.split("/").map(Number);
+      const mesTxt = `${MESES_MIN[mm-1]} ${yy}`;
+
+      totalPercibido += (Number(r.percibido)||0);
+
+      html += `
+        <tr class="detail-row" style="display:none;">
+          <td>${cli}</td>
+          <td>${mesTxt}</td>
+          <td>${fmtMon(Number(r.impMens)||0)}</td>
+          <td>${fmtMon(Number(r.percibido)||0)}</td>
+          <td class="${running>0?'negativo':''}">${fmtMon(running)}</td>
+          <td>${r.obs || ''}</td>
+        </tr>
+      `;
+    });
+
+    // Para el TOTAL general, usamos la lógica de encabezado por cliente:
+    totalSaldoFinal += subPendHeader;
+  });
+
+  html += `
+      <tr class="total" style="background:#cde9f9; font-weight:bold;">
+        <td colspan="3">TOTAL</td>
+        <td>${fmtMon(totalPercibido)}</td>
+        <td>${fmtMon(totalSaldoFinal)}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>`;
+
+  div.innerHTML = html;
+
+  // Toggle expand/collapse
+  div.querySelectorAll(".client-header").forEach(head => {
+    head.addEventListener("click", () => {
+      const nexts = [];
+      for (let n = head.nextElementSibling; n && !n.classList.contains("client-header") && !n.classList.contains("total"); n = n.nextElementSibling) {
+        nexts.push(n);
+      }
+      const abierto = nexts.some(r => r.style.display !== "none");
+      nexts.forEach(r => r.style.display = abierto ? "none" : "");
+      const td = head.querySelector("td");
+      if (td) td.textContent = (abierto ? "▶ " : "▼ ") + td.textContent.replace(/^.[\s]/, "");
+    });
+  });
+}
+
+
+  // ====== Gráficos ======
+  function renderCharts(){
+    charts.evol?.destroy?.();
+    charts.cumpl?.destroy?.();
+
+    const data = filtros();
+    if (!data.length) {
+      const ctx1 = document.getElementById("alqChartEvol").getContext("2d");
+      charts.evol = new Chart(ctx1, { type:'line', data:{labels:[],datasets:[{data:[]}]}, options:{responsive:true}});
+      const ctx2 = document.getElementById("alqChartCumpl").getContext("2d");
+      charts.cumpl = new Chart(ctx2, { type:'bar', data:{labels:[],datasets:[{data:[]}]}, options:{responsive:true}});
+      return;
+    }
+
+    // Evolución mensual (Esperado vs Percibido)
+    const byYM = new Map(); // "yyyy-mm" -> {esp, perc}
+    const toYM = (s)=>{ const [dd,mm,yy]=s.split("/").map(Number); return `${yy}-${String(mm).padStart(2,"0")}`; };
+    data.forEach(r => {
+      const k = toYM(r.mesStr);
+      if (!byYM.has(k)) byYM.set(k, {esp:0, perc:0});
+      const it = byYM.get(k);
+      it.esp  += r.esperado;
+      it.perc += r.percibido;
+    });
+    const keys = Array.from(byYM.keys()).sort((a,b)=> a.localeCompare(b));
+    const labels = keys.map(k => MESES_MIN[Number(k.split("-")[1])-1]); // solo meses (año lo podemos marcar con bandas si querés)
+    const dataEsp  = keys.map(k => byYM.get(k).esp);
+    const dataPerc = keys.map(k => byYM.get(k).perc);
+
+    const ctx1 = document.getElementById("alqChartEvol").getContext("2d");
+    charts.evol = new Chart(ctx1, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label:"Esperado", data: dataEsp, fill:false, tension:.2 },
+          { label:"Percibido", data: dataPerc, fill:false, tension:.2 }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend:{ position:"bottom" },
+          tooltip:{ callbacks:{ label:(c)=> `${c.dataset.label}: ${fmtMon(c.parsed.y)}` } }
+        },
+        scales: {
+          x: { ticks: { maxRotation:0, autoSkip:false } },
+          y: { beginAtZero:true, ticks: { callback:(v)=> fmtMon(v) } }
+        }
+      }
+    });
+
+    // Cumplimiento % por cliente
+    const byCli = new Map();
+    data.forEach(r => {
+      if (!byCli.has(r.cliente)) byCli.set(r.cliente, {esp:0, perc:0});
+      const it = byCli.get(r.cliente);
+      it.esp += r.esperado; it.perc += r.percibido;
+    });
+    const arr = Array.from(byCli.entries()).map(([cli, v]) => ({
+      cli, pct: v.esp>0 ? (v.perc / v.esp) * 100 : 0
+    })).sort((a,b)=> b.pct - a.pct);
+
+    const ctx2 = document.getElementById("alqChartCumpl").getContext("2d");
+    charts.cumpl = new Chart(ctx2, {
+      type: "bar",
+      data: {
+        labels: arr.map(x => x.cli),
+        datasets: [{ label:"Cumplimiento %", data: arr.map(x => Number(x.pct.toFixed(2))) }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend:{ display:false },
+          tooltip:{ callbacks:{ label:(c)=> `${c.dataset.label}: ${c.parsed.y.toFixed(2)} %` } }
+        },
+        scales: {
+          x: { ticks: { autoSkip:false, maxRotation:45, minRotation:45 } },
+          y: { beginAtZero:true, max:100, ticks:{ callback:(v)=> v + '%' } }
+        }
+      }
+    });
+  }
+
+  // ====== Exportar / Imprimir ======
+  function exportarExcel(){
+    const tabla = document.querySelector("#alqTabla table");
+    if (!tabla) return;
+    const wb = XLSX.utils.table_to_book(tabla, { sheet: "Alquileres" });
+    XLSX.writeFile(wb, "alquileres.xlsx");
+  }
+  function imprimir(){
+    const tablaHTML = document.getElementById("alqTabla").innerHTML;
+    const imgEvol = document.getElementById("alqChartEvol").toDataURL();
+    const imgCumpl= document.getElementById("alqChartCumpl").toDataURL();
+    const html = `
+      <html><head><title>Alquileres</title>
+      <style>
+        body{ font-family:'Segoe UI',sans-serif; padding:20px; color:#000; }
+        table{ width:100%; border-collapse:collapse; font-size:12px; }
+        th,td{ border:1px solid #000; padding:6px; text-align:left; }
+        th{ background:#007bff; color:#fff; }
+        .grafico{ text-align:center; margin: 20px 0; }
+        .grafico img{ max-width:100%; height:auto; }
+        .total td{ font-weight:bold; background:#f0f0f0; }
+      </style></head><body>
+        <h2>Alquileres – Tabla</h2>
+        ${tablaHTML}
+        <div class="grafico"><h2>Evolución mensual</h2><img src="${imgEvol}"></div>
+        <div class="grafico"><h2>Cumplimiento %</h2><img src="${imgCumpl}"></div>
+      </body></html>`;
+    const w = window.open("", "", "width=1024,height=768");
+    w.document.write(html); w.document.close(); w.focus(); w.print();
+  }
+
+  // ====== Activación al abrir la pestaña ======
+  const obs = new MutationObserver(() => {
+    const v = document.querySelector("#vista-alquileres");
+    if (v && !v.classList.contains("hidden")) {
+      initOnce();
+      obs.disconnect();
+    }
+  });
+  obs.observe(document.body, { attributes:true, childList:true, subtree:true });
+
+  // Si ya está visible (por cualquier motivo)
+  const already = document.querySelector("#vista-alquileres") && !document.querySelector("#vista-alquileres").classList.contains("hidden");
+  if (already) initOnce();
+})();
+
+    </script>
+    
+  </body>
+</html>
