@@ -79,13 +79,23 @@ function obtenerResumenPorCP() {
   const pagosVals = getDataRows_(shPagos);
   const idxPg = mapHeaders_(shPagos, ['Marca temporal','CP','Cliente','Nro de E recauda','Fecha de pago','Monto']);
   const pagosPorCP = {};
+  const pagosAgrupados = agruparPagosPorRecibo_(pagosVals, idxPg);
 
-  pagosVals.forEach(r => {
-    const cp = normalizeCP_(r[idxPg['CP']]);
-    if (!cp) return;
-    const monto = toNumber_(r[idxPg['Monto']]);
-    if (!pagosPorCP[cp]) pagosPorCP[cp] = { abonado: 0 };
-    pagosPorCP[cp].abonado += monto;
+  // Asignar el total del recibo a los CP indicados, descontando el saldo pendiente de cada CP
+  pagosAgrupados.forEach(grupo => {
+    let restante = grupo.montoTotal;
+    grupo.cps.forEach(cp => {
+      if (restante <= 0) return;
+      const d = deudas[cp];
+      if (!d) return;
+      const abonadoActual = pagosPorCP[cp]?.abonado || 0;
+      const saldoPend = Math.max(0, d.facturado - d.debito - abonadoActual);
+      if (saldoPend <= 0) return;
+      const aplicar = Math.min(restante, saldoPend);
+      if (!pagosPorCP[cp]) pagosPorCP[cp] = { abonado: 0 };
+      pagosPorCP[cp].abonado += aplicar;
+      restante -= aplicar;
+    });
   });
 
   function categorizarCP(d) {
@@ -129,10 +139,11 @@ function obtenerIngresos() {
   const idx = mapHeaders_(shPagos, ['Marca temporal','CP','Cliente','Nro de E recauda','Fecha de pago','Monto']);
 
   const out = [];
-  vals.forEach(r => {
-    const cliente = safeString_(r[idx['Cliente']]);
-    const fecha   = toDate_(r[idx['Fecha de pago']]);
-    const monto   = toNumber_(r[idx['Monto']]);
+  const pagosAgrupados = agruparPagosPorRecibo_(vals, idx);
+  pagosAgrupados.forEach(grupo => {
+    const cliente = safeString_(grupo.cliente);
+    const fecha = grupo.fecha;
+    const monto = grupo.montoTotal;
     out.push([cliente, formatDate_(fecha), round2_(monto)]);
   });
   return out;
@@ -387,6 +398,42 @@ function getDataRows_(sh) {
   const vals = sh.getDataRange().getValues();
   if (vals.length <= 1) return [];
   return vals.slice(1).filter(r => r.some(c => c !== '' && c !== null));
+}
+
+function agruparPagosPorRecibo_(pagosVals, idxPg) {
+  const recibosMap = new Map();
+
+  pagosVals.forEach(r => {
+    const cp = normalizeCP_(r[idxPg['CP']]);
+    const nroRec = safeString_(r[idxPg['Nro de E recauda']]);
+    const cliente = safeString_(r[idxPg['Cliente']]);
+    const fecha = toDate_(r[idxPg['Fecha de pago']]);
+    const monto = toNumber_(r[idxPg['Monto']]);
+
+    if (!nroRec) {
+      if (!cp) return;
+      const key = `CP:${cp}`;
+      if (!recibosMap.has(key)) {
+        recibosMap.set(key, { montoTotal: 0, cps: [cp], cliente, fecha });
+      }
+      const it = recibosMap.get(key);
+      it.montoTotal += monto;
+      if (!it.fecha && fecha) it.fecha = fecha;
+      if (!it.cliente && cliente) it.cliente = cliente;
+      return;
+    }
+
+    if (!recibosMap.has(nroRec)) {
+      recibosMap.set(nroRec, { montoTotal: 0, cps: [], cliente, fecha });
+    }
+    const it = recibosMap.get(nroRec);
+    it.montoTotal = Math.max(it.montoTotal, monto);
+    if (cp && !it.cps.includes(cp)) it.cps.push(cp);
+    if (!it.fecha && fecha) it.fecha = fecha;
+    if (!it.cliente && cliente) it.cliente = cliente;
+  });
+
+  return Array.from(recibosMap.values());
 }
 
 function mapHeaders_(sh, expectedHeaders) {
