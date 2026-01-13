@@ -558,3 +558,4 @@ function isDebito_(concepto) {
   return patrones.some(re => re.test(s));
 }
 function round2_(x){ return Math.round((x + Number.EPSILON) * 100) / 100; }
+
