@@ -53,6 +53,7 @@
       .gradient-purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
       .gradient-orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
       .gradient-red    { background: linear-gradient(135deg, #ff6a00 0%, #ee0979 100%); }
+      .gradient-yellow { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
 
       /* Filtros */
       .filtro-container { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 20px; }
@@ -105,6 +106,8 @@
       .badge-ok { background:#e6f8ec; color:#1b5e20; border:1px solid #c8e6c9; }
       .badge-warn { background:#fff4e5; color:#8a4b00; border:1px solid #ffe0b2; }
       .badge-danger { background:#fdecea; color:#b71c1c; border:1px solid #ffcdd2; }
+      .badge-debito { background:#f3e8ff; color:#5b21b6; border:1px solid #d8b4fe; }
+      .badge-refactura { background:#fef9c3; color:#92400e; border:1px solid #fde68a; }
       tr.row-vencido { background-color:#fff1f0 !important; }
       tr.row-porvencer { background-color:#fff9e6 !important; }
       /* Celda Facturado dividida en 2 */
@@ -208,7 +211,7 @@
   align-items: center;
 }
 
-#alq-filtros > div {
+      #alq-filtros > div {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -227,6 +230,23 @@
   width: 160px;
   max-width: 100%;
 }
+
+/* Glosario */
+.glossary-card {
+  margin: 12px 0 18px;
+  padding: 12px 16px;
+  background: #f7f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+}
+.glossary-card summary {
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.glossary-card summary::-webkit-details-marker { display: none; }
+.glossary-card ul { margin: 10px 0 0; padding-left: 18px; }
+.glossary-card li { margin-bottom: 6px; color: #333; }
     </style>
 
     <script>
@@ -261,6 +281,13 @@
             <div class="kpi-valor" id="kpiFacturado">—</div>
           </div>
         </div>
+        <div class="kpi-card gradient-yellow">
+          <div class="kpi-icon"><i data-lucide="file-stack"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-titulo">Refacturación</div>
+            <div class="kpi-valor" id="kpiRefactura">—</div>
+          </div>
+        </div>
         <div class="kpi-card gradient-green">
           <div class="kpi-icon"><i data-lucide="check-circle"></i></div>
           <div class="kpi-info">
@@ -268,7 +295,14 @@
             <div class="kpi-valor" id="kpiAbonadoCUT">—</div>
           </div>
         </div>
-        <div class="kpi-card gradient-red">
+        <div class="kpi-card gradient-purple">
+          <div class="kpi-icon"><i data-lucide="x-circle"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-titulo">Débitos/Reintegros</div>
+            <div class="kpi-valor" id="kpiDebito">—</div>
+          </div>
+        </div>
+        <div class="kpi-card gradient-orange">
           <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
           <div class="kpi-info">
             <div class="kpi-titulo">Pendiente vencido</div>
@@ -282,17 +316,10 @@
             <div class="kpi-valor" id="kpiPendPorVencer">—</div>
           </div>
         </div>
-        <div class="kpi-card gradient-purple">
-          <div class="kpi-icon"><i data-lucide="x-circle"></i></div>
+        <div class="kpi-card gradient-red">
+          <div class="kpi-icon"><i data-lucide="wallet"></i></div>
           <div class="kpi-info">
-            <div class="kpi-titulo">Débitos/Reintegros</div>
-            <div class="kpi-valor" id="kpiDebito">—</div>
-          </div>
-        </div>
-        <div class="kpi-card gradient-blue">
-          <div class="kpi-icon"><i data-lucide="balance"></i></div>
-          <div class="kpi-info">
-            <div class="kpi-titulo">Saldo total</div>
+            <div class="kpi-titulo">Saldo Pendiente Total</div>
             <div class="kpi-valor" id="kpiSaldoTotal">—</div>
           </div>
         </div>
@@ -320,12 +347,41 @@
           <label style="display:flex; align-items:center; gap:6px;">
             <input type="checkbox" id="soloPorVencer"> Solo por vencer
           </label>
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="soloAbonadoTotal"> Abonado total
+          </label>
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="soloAbonadoParcial"> Abonado parcial
+          </label>
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="soloDebitos"> Débitos
+          </label>
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="soloRefacturas"> Refacturas
+          </label>
         </div>
 
         <div class="btn-export">
           <button onclick="imprimirTablaYGraficos()"><i data-lucide="printer" class="icono"></i>Exportar PDF</button>
           <button onclick="exportarExcel()"><i data-lucide="file-spreadsheet" class="icono"></i>Exportar Excel</button>
         </div>
+      </div>
+
+      <div class="glossary-card">
+        <details>
+          <summary>Glosario de etiquetas</summary>
+          <ul>
+            <li><strong>Abonado total:</strong> corresponde al CP que se abonó en su totalidad (saldo pendiente = 0).</li>
+            <li><strong>Abonado parcial:</strong> corresponde al CP con cobro parcial (cobrado &gt; 0 y saldo pendiente &gt; 0).</li>
+            <li><strong>VENCIDO:</strong> corresponde al CP con saldo pendiente &gt; 0 cuya fecha base + umbral ya pasó.</li>
+            <li><strong>A VENCER:</strong> corresponde al CP con saldo pendiente &gt; 0 cuya fecha base + umbral todavía no pasó.</li>
+            <li><strong>Débito:</strong> corresponde a CP categorizado como Débitos/Reintegros (no tiene vencimiento).</li>
+            <li><strong>Refactura:</strong> corresponde a CP marcado como refacturación (mantiene reglas de abono parcial/total).</li>
+            <li><strong>Saldo pendiente:</strong> facturado − (débitos/reintegros + cobrado). Solo si es mayor a 0 se aplica VENCIDO/A VENCER.</li>
+            <li><strong>Fecha base:</strong> Gasto de funcionamiento usa el período; el resto usa Fecha CP (si existe) y si no el período.</li>
+            <li><strong>Umbral:</strong> 10 días para Gasto de funcionamiento; 30 días para el resto.</li>
+          </ul>
+        </details>
       </div>
 
       <div id="contenidoImprimible">
@@ -608,25 +664,79 @@
   return { estado:"A VENCER", vencido:false, porVencer:true, diasAlVenc:diasHastaVenc, diasExcedidos:0 };
 }
 
+function getFiltrosEtiquetas() {
+  return {
+    soloVencidos: Boolean(document.getElementById("soloVencidos")?.checked),
+    soloPorVencer: Boolean(document.getElementById("soloPorVencer")?.checked),
+    soloAbonadoTotal: Boolean(document.getElementById("soloAbonadoTotal")?.checked),
+    soloAbonadoParcial: Boolean(document.getElementById("soloAbonadoParcial")?.checked),
+    soloDebitos: Boolean(document.getElementById("soloDebitos")?.checked),
+    soloRefacturas: Boolean(document.getElementById("soloRefacturas")?.checked)
+  };
+}
+
+function cumpleFiltroEtiquetas(row, filtros) {
+  if (!filtros || !Array.isArray(row)) return true;
+  const {
+    soloVencidos,
+    soloPorVencer,
+    soloAbonadoTotal,
+    soloAbonadoParcial,
+    soloDebitos,
+    soloRefacturas
+  } = filtros;
+  const anyFiltro = [soloVencidos, soloPorVencer, soloAbonadoTotal, soloAbonadoParcial, soloDebitos, soloRefacturas].some(Boolean);
+  if (!anyFiltro) return true;
+
+  const [, , periodo, fechaCP, categoria, facturado, debito, abonado] = row;
+  const fact = Number(facturado) || 0;
+  const deb = Number(debito) || 0;
+  const abo = Number(abonado) || 0;
+  const saldoPend = Math.max(0, fact - (deb + abo));
+  const catUp = String(categoria || "").toUpperCase();
+  const esDebito = catUp === "DÉBITOS" || catUp === "DEBITOS";
+  const esRefactura = catUp === "REFACTURACIÓN" || catUp === "REFACTURACION";
+  const venc = (!esDebito && saldoPend > 0) ? calcularVencimientoAvanzado(periodo, fechaCP, categoria) : null;
+
+  const matchVencido = Boolean(venc?.vencido);
+  const matchPorVencer = Boolean(venc?.porVencer);
+  const matchAbonadoTotal = !esDebito && saldoPend === 0;
+  const matchAbonadoParcial = !esDebito && saldoPend > 0 && abo > 0;
+  const matchDebitos = esDebito;
+  const matchRefacturas = esRefactura;
+
+  const matches = [];
+  if (soloVencidos) matches.push(matchVencido);
+  if (soloPorVencer) matches.push(matchPorVencer);
+  if (soloAbonadoTotal) matches.push(matchAbonadoTotal);
+  if (soloAbonadoParcial) matches.push(matchAbonadoParcial);
+  if (soloDebitos) matches.push(matchDebitos);
+  if (soloRefacturas) matches.push(matchRefacturas);
+
+  return matches.some(Boolean);
+}
+
       /* KPIs */
     // Esquema 8 cols: [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado]
 function actualizarKPIs() {
   const clienteFiltro = document.getElementById("clienteSelect").value;
   const desde = document.getElementById("desde").value;
   const hasta = document.getElementById("hasta").value;
+  const filtrosEtiquetas = getFiltrosEtiquetas();
 
   let totalFacturado = 0;
   let totalDebito = 0;
   let totalAbonadoAsignado = 0;
-  let totalIngresoCUT = 0;
+  let totalRefactura = 0;
   let pendVencido = 0;
   let pendPorVencer = 0;
 
-  resumenPorCP.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
-    const fechaRef = new Date((periodo||"").split("/").reverse().join("/"));
+  resumenPorCP.forEach((row) => {
+    const [cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado] = row;
+    const fechaRef = new Date(((fechaCP || periodo || "")).split("/").reverse().join("/"));
     const coincideCliente = !clienteFiltro || cli === clienteFiltro;
     const coincideFechas = (!desde || fechaRef >= new Date(desde)) && (!hasta || fechaRef <= new Date(hasta));
-    if (!coincideCliente || !coincideFechas) return;
+    if (!coincideCliente || !coincideFechas || !cumpleFiltroEtiquetas(row, filtrosEtiquetas)) return;
 
     const fact = Number(facturado)||0;
     const deb  = Number(debito)||0;
@@ -637,6 +747,10 @@ function actualizarKPIs() {
     totalAbonadoAsignado += abo;
 
     const saldoPend = Math.max(0, fact - (deb + abo));
+    const catUp = String(categoria || "").toUpperCase();
+    if (catUp === "REFACTURACIÓN" || catUp === "REFACTURACION") {
+      totalRefactura += fact;
+    }
 
     if (saldoPend > 0) {
       const v = calcularVencimientoAvanzado(periodo, fechaCP, categoria);
@@ -645,19 +759,11 @@ function actualizarKPIs() {
     }
   });
 
-  // Ingresos reales (CUT) desde la hoja de pagos
-  ingresosData.forEach(([cli, fechaStr, ingreso]) => {
-    const fecha = new Date((fechaStr||"").split("/").reverse().join("/"));
-    const coincideCliente = !clienteFiltro || cli === clienteFiltro;
-    const coincideFechas = (!desde || fecha >= new Date(desde)) && (!hasta || fecha <= new Date(hasta));
-    if (!coincideCliente || !coincideFechas) return;
-    totalIngresoCUT += Number(ingreso)||0;
-  });
-
   const saldoTotal = totalFacturado - (totalDebito + totalAbonadoAsignado);
 
   document.getElementById("kpiFacturado").innerText     = formatoMillones(totalFacturado);
-  document.getElementById("kpiAbonadoCUT").innerText    = formatoMillones(totalIngresoCUT);
+  document.getElementById("kpiRefactura").innerText     = formatoMillones(totalRefactura);
+  document.getElementById("kpiAbonadoCUT").innerText    = formatoMillones(totalAbonadoAsignado);
   document.getElementById("kpiPendVencido").innerText   = formatoMillones(pendVencido);
   document.getElementById("kpiPendPorVencer").innerText = formatoMillones(pendPorVencer);
   document.getElementById("kpiDebito").innerText        = formatoMillones(totalDebito);
@@ -729,21 +835,21 @@ function ordenarTablaPorColumna(idxCol) {
         }, 50);
       }
 
-      function renderTablaResumen() {
+  function renderTablaResumen() {
   const clienteFiltro = document.getElementById("clienteSelect").value;
   const desde = document.getElementById("desde").value;
   const hasta = document.getElementById("hasta").value;
-  const soloVencidos = document.getElementById("soloVencidos")?.checked;
-  const soloPorVencer = document.getElementById("soloPorVencer")?.checked;
+  const filtrosEtiquetas = getFiltrosEtiquetas();
 
   const tablaDiv = document.getElementById("tablaResumen");
 
   // Filtro base (usa Período como referencia de fecha)
-  const filtrado = resumenPorCP.filter(([cli, cp, periodo]) => {
-    const fecha = new Date((periodo||"").split("/").reverse().join("/"));
+  const filtrado = resumenPorCP.filter((row) => {
+    const [cli, cp, periodo, fechaCP] = row;
+    const fecha = new Date(((fechaCP || periodo || "")).split("/").reverse().join("/"));
     const coincideCliente = !clienteFiltro || cli === clienteFiltro;
     const coincideFechas = (!desde || fecha >= new Date(desde)) && (!hasta || fecha <= new Date(hasta));
-    return coincideCliente && coincideFechas;
+    return coincideCliente && coincideFechas && cumpleFiltroEtiquetas(row, filtrosEtiquetas);
   });
 
   if (!filtrado.length) {
@@ -806,7 +912,7 @@ function ordenarTablaPorColumna(idxCol) {
       }
     });
 
-    const clave = cliente.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_");
+    const clave = String(cliente || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_");
 
     // Header del cliente
     html += `
@@ -839,24 +945,26 @@ function ordenarTablaPorColumna(idxCol) {
 
       const saldo = abo + deb - fact;
       const saldoPend = Math.max(0, fact - (deb + abo));
+      const catUp = String(categoria || "").toUpperCase();
+      const esDebito = catUp === "DÉBITOS" || catUp === "DEBITOS";
+      const esRefactura = catUp === "REFACTURACIÓN" || catUp === "REFACTURACION";
 
       // Etiquetas de abono
       let etiquetaAbono = '';
-      if (saldoPend === 0) {
+      if (esDebito) {
+        etiquetaAbono = `<span class="badge badge-debito" style="margin-left:6px;">DÉBITO</span>`;
+      } else if (saldoPend === 0) {
         etiquetaAbono = `<span class="badge badge-ok" style="margin-left:6px;">abonado total</span>`;
       } else if (abo > 0) {
         etiquetaAbono = `<span class="badge badge-warn" style="margin-left:6px;">abonado parcial</span>`;
       }
+      const etiquetaRefactura = esRefactura ? `<span class="badge badge-refactura" style="margin-left:6px;">REFACTURA</span>` : '';
 
       // Vencimiento (solo si hay saldo pendiente)
       let badgeVenc = '', detalleVenc = '', rowClass = '';
       if (saldoPend > 0) {
         const v = calcularVencimientoAvanzado(periodo, fechaCP, categoria);
-        const catUp = String(categoria||"").toUpperCase();
-        if (catUp === 'DÉBITOS' || catUp === 'DEBITOS') {
-          badgeVenc = `<span class="badge badge-ok">—</span>`;
-          detalleVenc = `Sin vencimiento (Débito)`;
-        } else if (v.vencido) {
+        if (v.vencido) {
           badgeVenc = `<span class="badge badge-danger">VENCIDO</span>`;
           detalleVenc = `Vencido hace ${v.diasExcedidos} d`;
           rowClass = 'row-vencido';
@@ -887,7 +995,7 @@ function ordenarTablaPorColumna(idxCol) {
           <td class="${deb < 0 ? "negativo" : ""}">${formatoMoneda(deb)}</td>
           <td class="${abo < 0 ? "negativo" : ""}">${formatoMoneda(abo)}</td>
           <td class="${saldo < 0 ? "negativo" : ""}">${formatoMoneda(saldo)}</td>
-          <td>${badgeVenc}${etiquetaAbono}</td>
+          <td>${badgeVenc}${etiquetaAbono}${etiquetaRefactura}</td>
           <td>${detalleVenc}</td>
         </tr>
       `;
@@ -953,13 +1061,16 @@ function ordenarTablaPorColumna(idxCol) {
   const cliente = document.getElementById("clienteSelect").value;
   const desde = document.getElementById("desde").value;
   const hasta = document.getElementById("hasta").value;
+  const filtrosEtiquetas = getFiltrosEtiquetas();
 
   // Esquema 8 cols
-  const filtrado = resumenPorCP.filter(([cli, cp, periodo]) => {
-    const fecha = new Date((periodo||"").split("/").reverse().join("/"));
+  const filtrado = resumenPorCP.filter((row) => {
+    const [cli, cp, periodo, fechaCP] = row;
+    const fecha = new Date(((fechaCP || periodo || "")).split("/").reverse().join("/"));
     return (!cliente || cli === cliente) &&
            (!desde || fecha >= new Date(desde)) &&
-           (!hasta || fecha <= new Date(hasta));
+           (!hasta || fecha <= new Date(hasta)) &&
+           cumpleFiltroEtiquetas(row, filtrosEtiquetas);
   });
 
   let totalFacturado = 0, totalDebito = 0, totalAbonado = 0;
@@ -1271,14 +1382,41 @@ const YearBandsPlugin = {
         });
       });
       
+function mostrarErrorCargaTabla(mensaje) {
+  const tablaDiv = document.getElementById("tablaResumen");
+  if (!tablaDiv) return;
+  tablaDiv.innerHTML = `<p>${mensaje}</p>`;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  const checkboxIds = [
+    "soloVencidos",
+    "soloPorVencer",
+    "soloAbonadoTotal",
+    "soloAbonadoParcial",
+    "soloDebitos",
+    "soloRefacturas"
+  ];
+  checkboxIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("change", () => {
+      aplicarFiltro();
+    });
+  });
+
   google.script.run.withSuccessHandler((data) => {
     // NUEVO esquema esperado por fila:
     // [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado]
     // Consolidamos por (cliente|cp) sumando montos. Para fechaCP tomamos la primera no vacía.
+    const rawData = Array.isArray(data) ? data : [];
+    if (!rawData.length && data) {
+      console.warn("Formato inesperado de datos para comprobantes:", data);
+      mostrarErrorCargaTabla("No se pudieron cargar los datos de comprobantes de pago.");
+    }
     resumenPorCP = Array.from(
-      data.reduce((map, row) => {
-        const [cli, cp, periodo, fechaCP, categoria, fact, deb, abo] = row;
+      rawData.reduce((map, row) => {
+        const [cli, cp, periodo, fechaCP, categoria, fact, deb, abo] = Array.isArray(row) ? row : [];
         const k = `${cli}|${cp}`;
         if (!map.has(k)) map.set(k, {
           cliente: cli,
@@ -1296,7 +1434,14 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!it.fechaCP && fechaCP) it.fechaCP = fechaCP;
         // si alguna línea marca GASTO DE FUNCIONAMIENTO, priorizala; luego Débitos; sino hospitalarios
         const cat = (categoria || "").toUpperCase();
-        const rank = { "GASTO DE FUNCIONAMIENTO": 2, "DÉBITOS": 1, "DEBITOS": 1, "GASTOS HOSPITALARIOS": 0 };
+        const rank = {
+          "GASTO DE FUNCIONAMIENTO": 3,
+          "REFACTURACIÓN": 2,
+          "REFACTURACION": 2,
+          "DÉBITOS": 1,
+          "DEBITOS": 1,
+          "GASTOS HOSPITALARIOS": 0
+        };
         const curr = (it.categoria || "").toUpperCase();
         if (!curr || (rank[cat] ?? 0) > (rank[curr] ?? 0)) it.categoria = categoria;
         return map;
@@ -2196,3 +2341,4 @@ if (!data.length) {
     
   </body>
 </html>
+

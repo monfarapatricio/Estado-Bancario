@@ -99,12 +99,11 @@ function obtenerResumenPorCP() {
   });
 
   function categorizarCP(d) {
-    const textos = [
-      ...Array.from(d.conceptos || []),
-      ...Array.from(d.descripciones || [])
-    ].filter(Boolean);
-    const hayFuncionamiento = textos.some(t => /FUNCIONAMIENTO/i.test(t));
+    const conceptos = Array.from(d.conceptos || []).filter(Boolean);
+    const hayRefactura = conceptos.some(t => String(t).trim().toUpperCase() === "REFACTURACION");
+    const hayFuncionamiento = conceptos.some(t => /FUNCIONAMIENTO/i.test(t));
     if (hayFuncionamiento) return 'GASTO DE FUNCIONAMIENTO';
+    if (hayRefactura) return 'REFACTURACIÓN';
     if (d.facturado === 0 && d.debito > 0) return 'Débitos';
     return 'GASTOS HOSPITALARIOS';
   }
@@ -559,3 +558,4 @@ function isDebito_(concepto) {
   return patrones.some(re => re.test(s));
 }
 function round2_(x){ return Math.round((x + Number.EPSILON) * 100) / 100; }
+
