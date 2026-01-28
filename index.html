@@ -53,6 +53,7 @@
       .gradient-purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
       .gradient-orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
       .gradient-red    { background: linear-gradient(135deg, #ff6a00 0%, #ee0979 100%); }
+      .gradient-yellow { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
 
       /* Filtros */
       .filtro-container { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 20px; }
@@ -105,6 +106,9 @@
       .badge-ok { background:#e6f8ec; color:#1b5e20; border:1px solid #c8e6c9; }
       .badge-warn { background:#fff4e5; color:#8a4b00; border:1px solid #ffe0b2; }
       .badge-danger { background:#fdecea; color:#b71c1c; border:1px solid #ffcdd2; }
+      .badge-debito { background:#f3e8ff; color:#5b21b6; border:1px solid #d8b4fe; }
+      .badge-refactura { background:#fef9c3; color:#92400e; border:1px solid #fde68a; }
+      tr.row-abonado { background-color:#e6f8ec !important; }
       tr.row-vencido { background-color:#fff1f0 !important; }
       tr.row-porvencer { background-color:#fff9e6 !important; }
       /* Celda Facturado dividida en 2 */
@@ -208,7 +212,7 @@
   align-items: center;
 }
 
-#alq-filtros > div {
+      #alq-filtros > div {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -227,6 +231,23 @@
   width: 160px;
   max-width: 100%;
 }
+
+/* Glosario */
+.glossary-card {
+  margin: 12px 0 18px;
+  padding: 12px 16px;
+  background: #f7f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+}
+.glossary-card summary {
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.glossary-card summary::-webkit-details-marker { display: none; }
+.glossary-card ul { margin: 10px 0 0; padding-left: 18px; }
+.glossary-card li { margin-bottom: 6px; color: #333; }
     </style>
 
     <script>
@@ -261,6 +282,13 @@
             <div class="kpi-valor" id="kpiFacturado">—</div>
           </div>
         </div>
+        <div class="kpi-card gradient-yellow">
+          <div class="kpi-icon"><i data-lucide="file-stack"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-titulo">Refacturación</div>
+            <div class="kpi-valor" id="kpiRefactura">—</div>
+          </div>
+        </div>
         <div class="kpi-card gradient-green">
           <div class="kpi-icon"><i data-lucide="check-circle"></i></div>
           <div class="kpi-info">
@@ -268,7 +296,14 @@
             <div class="kpi-valor" id="kpiAbonadoCUT">—</div>
           </div>
         </div>
-        <div class="kpi-card gradient-red">
+        <div class="kpi-card gradient-purple">
+          <div class="kpi-icon"><i data-lucide="x-circle"></i></div>
+          <div class="kpi-info">
+            <div class="kpi-titulo">Débitos/Reintegros</div>
+            <div class="kpi-valor" id="kpiDebito">—</div>
+          </div>
+        </div>
+        <div class="kpi-card gradient-orange">
           <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
           <div class="kpi-info">
             <div class="kpi-titulo">Pendiente vencido</div>
@@ -282,17 +317,10 @@
             <div class="kpi-valor" id="kpiPendPorVencer">—</div>
           </div>
         </div>
-        <div class="kpi-card gradient-purple">
-          <div class="kpi-icon"><i data-lucide="x-circle"></i></div>
+        <div class="kpi-card gradient-red">
+          <div class="kpi-icon"><i data-lucide="wallet"></i></div>
           <div class="kpi-info">
-            <div class="kpi-titulo">Débitos/Reintegros</div>
-            <div class="kpi-valor" id="kpiDebito">—</div>
-          </div>
-        </div>
-        <div class="kpi-card gradient-blue">
-          <div class="kpi-icon"><i data-lucide="balance"></i></div>
-          <div class="kpi-info">
-            <div class="kpi-titulo">Saldo total</div>
+            <div class="kpi-titulo">Saldo Pendiente Total</div>
             <div class="kpi-valor" id="kpiSaldoTotal">—</div>
           </div>
         </div>
@@ -313,6 +341,11 @@
           <button onclick="aplicarFiltro()"><i data-lucide="filter" class="icono"></i>Aplicar</button>
         </div>
 
+        <div class="cp-container">
+          <label for="cpFiltro"><i data-lucide="hash" class="icono"></i>CP:</label>
+          <input type="text" id="cpFiltro" placeholder="Buscar CP" />
+        </div>
+
         <div class="venc-container">
           <label style="display:flex; align-items:center; gap:6px;">
             <input type="checkbox" id="soloVencidos"> Solo vencidos
@@ -320,12 +353,41 @@
           <label style="display:flex; align-items:center; gap:6px;">
             <input type="checkbox" id="soloPorVencer"> Solo por vencer
           </label>
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="soloAbonadoTotal"> Abonado total
+          </label>
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="soloAbonadoParcial"> Abonado parcial
+          </label>
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="soloDebitos"> Débitos
+          </label>
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="soloRefacturas"> Refacturas
+          </label>
         </div>
 
         <div class="btn-export">
           <button onclick="imprimirTablaYGraficos()"><i data-lucide="printer" class="icono"></i>Exportar PDF</button>
           <button onclick="exportarExcel()"><i data-lucide="file-spreadsheet" class="icono"></i>Exportar Excel</button>
         </div>
+      </div>
+
+      <div class="glossary-card">
+        <details>
+          <summary>Glosario de etiquetas</summary>
+          <ul>
+            <li><strong>Abonado total:</strong> corresponde al CP que se abonó en su totalidad (saldo pendiente = 0).</li>
+            <li><strong>Abonado parcial:</strong> corresponde al CP con cobro parcial (cobrado &gt; 0 y saldo pendiente &gt; 0).</li>
+            <li><strong>VENCIDO:</strong> corresponde al CP con saldo pendiente &gt; 0 cuya fecha base + umbral ya pasó.</li>
+            <li><strong>A VENCER:</strong> corresponde al CP con saldo pendiente &gt; 0 cuya fecha base + umbral todavía no pasó.</li>
+            <li><strong>Débito:</strong> corresponde a CP categorizado como Débitos/Reintegros (no tiene vencimiento).</li>
+            <li><strong>Refactura:</strong> corresponde a CP marcado como refacturación (mantiene reglas de abono parcial/total).</li>
+            <li><strong>Saldo pendiente:</strong> facturado − (débitos/reintegros + cobrado). Solo si es mayor a 0 se aplica VENCIDO/A VENCER.</li>
+            <li><strong>Fecha base:</strong> Gasto de funcionamiento usa el período; el resto usa Fecha CP (si existe) y si no el período.</li>
+            <li><strong>Umbral:</strong> 10 días para Gasto de funcionamiento; 30 días para el resto.</li>
+          </ul>
+        </details>
       </div>
 
       <div id="contenidoImprimible">
@@ -531,8 +593,41 @@
       function exportarExcel() {
         const tabla = document.querySelector("#tablaResumen table");
         if (!tabla) return;
-        const wb = XLSX.utils.table_to_book(tabla, { sheet: "Resumen" });
+        const tablaClone = tabla.cloneNode(true);
+        const formatNumberES = (valor) =>
+          valor.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const parseNumberFromText = (text) => {
+          const raw = String(text || "").trim();
+          if (!raw) return null;
+          const negativo = raw.startsWith("(") && raw.endsWith(")");
+          const cleaned = raw
+            .replace(/[^\d.,-]/g, "")
+            .replace(/\./g, "")
+            .replace(",", ".");
+          const num = parseFloat(cleaned);
+          if (Number.isNaN(num)) return null;
+          return negativo ? -num : num;
+        };
+
+        const numericCols = new Set([2, 5, 6, 7, 8, 9]); // facturado, vencido/avencer, debito, refactura, cobrado, saldo
+        tablaClone.querySelectorAll("tbody tr, tfoot tr").forEach((row) => {
+          row.querySelectorAll("td").forEach((cell, idx) => {
+            const text = cell.textContent || "";
+            if (!text.match(/[0-9]/)) return;
+            if (!numericCols.has(idx) && !text.includes("$") && !text.includes("(")) return;
+            const parsed = parseNumberFromText(text);
+            if (parsed === null) return;
+            cell.textContent = formatNumberES(parsed);
+          });
+        });
+
+        const wrapper = document.createElement("div");
+        wrapper.style.display = "none";
+        wrapper.appendChild(tablaClone);
+        document.body.appendChild(wrapper);
+        const wb = XLSX.utils.table_to_book(tablaClone, { sheet: "Resumen" });
         XLSX.writeFile(wb, "resumen.xlsx");
+        wrapper.remove();
       }
     </script>
 
@@ -592,6 +687,7 @@
     base = toDMY(fechaCpStr) || toDMY(periodoStr);
     umbral = 30;
   }
+  const graciaDetalle = umbral;
 
   if (!base) {
     // sin fechas válidas: no marcar vencido
@@ -601,42 +697,107 @@
   const hoy0 = startOfDay(hoy);
   const fechaVenc = addDays(base, umbral);
   const diasHastaVenc = diff(hoy0, fechaVenc); // >0 falta, <0 excedido
+  const diasPasados = Math.max(0, Math.floor((hoy0 - fechaVenc) / 86400000));
 
   if (diasHastaVenc < 0) {
-    return { estado:"VENCIDO", vencido:true, porVencer:false, diasAlVenc:0, diasExcedidos:Math.abs(diasHastaVenc) };
+    const diasExcedidos = Math.max(0, diasPasados - graciaDetalle);
+    return { estado:"VENCIDO", vencido:true, porVencer:false, diasAlVenc:0, diasExcedidos };
   }
   return { estado:"A VENCER", vencido:false, porVencer:true, diasAlVenc:diasHastaVenc, diasExcedidos:0 };
 }
 
+function getFiltrosEtiquetas() {
+  return {
+    soloVencidos: Boolean(document.getElementById("soloVencidos")?.checked),
+    soloPorVencer: Boolean(document.getElementById("soloPorVencer")?.checked),
+    soloAbonadoTotal: Boolean(document.getElementById("soloAbonadoTotal")?.checked),
+    soloAbonadoParcial: Boolean(document.getElementById("soloAbonadoParcial")?.checked),
+    soloDebitos: Boolean(document.getElementById("soloDebitos")?.checked),
+    soloRefacturas: Boolean(document.getElementById("soloRefacturas")?.checked)
+  };
+}
+
+function cumpleFiltroEtiquetas(row, filtros) {
+  if (!filtros || !Array.isArray(row)) return true;
+  const {
+    soloVencidos,
+    soloPorVencer,
+    soloAbonadoTotal,
+    soloAbonadoParcial,
+    soloDebitos,
+    soloRefacturas
+  } = filtros;
+  const anyFiltro = [soloVencidos, soloPorVencer, soloAbonadoTotal, soloAbonadoParcial, soloDebitos, soloRefacturas].some(Boolean);
+  if (!anyFiltro) return true;
+
+  const [, , periodo, fechaCP, categoria, facturado, debito, refactura, abonado] = row;
+  const fact = Number(facturado) || 0;
+  const deb = Number(debito) || 0;
+  const refac = Number(refactura) || 0;
+  const abo = Number(abonado) || 0;
+  const saldoPend = Math.max(0, fact + refac - deb - abo);
+  const catUp = String(categoria || "").toUpperCase();
+  const esDebito = catUp === "DÉBITOS" || catUp === "DEBITOS";
+  const esRefactura = catUp === "REFACTURACIÓN" || catUp === "REFACTURACION";
+  const venc = (!esDebito && saldoPend > 0) ? calcularVencimientoAvanzado(periodo, fechaCP, categoria) : null;
+
+  const matchVencido = Boolean(venc?.vencido);
+  const matchPorVencer = Boolean(venc?.porVencer);
+  const matchAbonadoTotal = !esDebito && saldoPend === 0;
+  const matchAbonadoParcial = !esDebito && saldoPend > 0 && abo > 0;
+  const matchDebitos = deb > 0;
+  const matchRefacturas = refac > 0;
+
+  const matches = [];
+  if (soloVencidos) matches.push(matchVencido);
+  if (soloPorVencer) matches.push(matchPorVencer);
+  if (soloAbonadoTotal) matches.push(matchAbonadoTotal);
+  if (soloAbonadoParcial) matches.push(matchAbonadoParcial);
+  if (soloDebitos) matches.push(matchDebitos);
+  if (soloRefacturas) matches.push(matchRefacturas);
+
+  return matches.some(Boolean);
+}
+
       /* KPIs */
-    // Esquema 8 cols: [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado]
+    // Esquema 9 cols: [cliente, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado]
 function actualizarKPIs() {
   const clienteFiltro = document.getElementById("clienteSelect").value;
   const desde = document.getElementById("desde").value;
   const hasta = document.getElementById("hasta").value;
+  const cpFiltro = (document.getElementById("cpFiltro")?.value || "").trim().toLowerCase();
+  const filtrosEtiquetas = getFiltrosEtiquetas();
 
   let totalFacturado = 0;
   let totalDebito = 0;
   let totalAbonadoAsignado = 0;
-  let totalIngresoCUT = 0;
+  let totalRefactura = 0;
   let pendVencido = 0;
   let pendPorVencer = 0;
 
-  resumenPorCP.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
-    const fechaRef = new Date((periodo||"").split("/").reverse().join("/"));
+  resumenPorCP.forEach((row) => {
+    if (!Array.isArray(row)) return;
+    const [cli, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado] = row;
+    const fechaRef = new Date(((fechaCP || periodo || "")).split("/").reverse().join("/"));
     const coincideCliente = !clienteFiltro || cli === clienteFiltro;
     const coincideFechas = (!desde || fechaRef >= new Date(desde)) && (!hasta || fechaRef <= new Date(hasta));
-    if (!coincideCliente || !coincideFechas) return;
+    const coincideCp = !cpFiltro || String(cp || "").toLowerCase().includes(cpFiltro);
+    if (!coincideCliente || !coincideFechas || !coincideCp || !cumpleFiltroEtiquetas(row, filtrosEtiquetas)) return;
 
     const fact = Number(facturado)||0;
     const deb  = Number(debito)||0;
+    const refac = Number(refactura)||0;
     const abo  = Number(abonado)||0;
 
     totalFacturado += fact;
     totalDebito += deb;
     totalAbonadoAsignado += abo;
 
-    const saldoPend = Math.max(0, fact - (deb + abo));
+    const saldoPend = Math.max(0, fact + refac - deb - abo);
+    const catUp = String(categoria || "").toUpperCase();
+    if (catUp === "REFACTURACIÓN" || catUp === "REFACTURACION") {
+      totalRefactura += refac;
+    }
 
     if (saldoPend > 0) {
       const v = calcularVencimientoAvanzado(periodo, fechaCP, categoria);
@@ -645,19 +806,11 @@ function actualizarKPIs() {
     }
   });
 
-  // Ingresos reales (CUT) desde la hoja de pagos
-  ingresosData.forEach(([cli, fechaStr, ingreso]) => {
-    const fecha = new Date((fechaStr||"").split("/").reverse().join("/"));
-    const coincideCliente = !clienteFiltro || cli === clienteFiltro;
-    const coincideFechas = (!desde || fecha >= new Date(desde)) && (!hasta || fecha <= new Date(hasta));
-    if (!coincideCliente || !coincideFechas) return;
-    totalIngresoCUT += Number(ingreso)||0;
-  });
-
-  const saldoTotal = totalFacturado - (totalDebito + totalAbonadoAsignado);
+  const saldoTotal = pendVencido + pendPorVencer;
 
   document.getElementById("kpiFacturado").innerText     = formatoMillones(totalFacturado);
-  document.getElementById("kpiAbonadoCUT").innerText    = formatoMillones(totalIngresoCUT);
+  document.getElementById("kpiRefactura").innerText     = formatoMillones(totalRefactura);
+  document.getElementById("kpiAbonadoCUT").innerText    = formatoMillones(totalAbonadoAsignado);
   document.getElementById("kpiPendVencido").innerText   = formatoMillones(pendVencido);
   document.getElementById("kpiPendPorVencer").innerText = formatoMillones(pendPorVencer);
   document.getElementById("kpiDebito").innerText        = formatoMillones(totalDebito);
@@ -676,21 +829,22 @@ function actualizarKPIs() {
       }
 
       /* Ordenamiento */
-      const ordenAsc = { cliente: true, cp: true, periodo: true, fechaCP: true, facturado: true, debito: true, abonado: true, saldo: true };
+      const ordenAsc = { cliente: true, cp: true, periodo: true, fechaCP: true, facturado: true, debito: true, refactura: true, abonado: true, saldo: true };
 
 function ordenarTablaPorColumna(idxCol) {
-  const keyByIdx = {0:"cliente",1:"cp",2:"importe",3:"periodo",4:"fechaCP",6:"debito",7:"abonado",8:"saldo"};
+  const keyByIdx = {0:"cliente",1:"cp",2:"importe",3:"periodo",4:"fechaCP",6:"debito",7:"refactura",8:"abonado",9:"saldo"};
   const key = keyByIdx[idxCol];
   if (!key) return;
 
   const objs = resumenPorCP.map(r => {
-    const [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado] = r;
+    const [cliente, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado] = r;
     return {
       cliente, cp, periodo, fechaCP, categoria,
       importe: Number(facturado)||0,
       debito:  Number(debito)||0,
+      refactura: Number(refactura)||0,
       abonado: Number(abonado)||0,
-      saldo:   (Number(abonado)||0) + (Number(debito)||0) - (Number(facturado)||0)
+      saldo:   (Number(abonado)||0) - (Number(debito)||0) + (Number(refactura)||0)
     };
   });
 
@@ -706,7 +860,7 @@ function ordenarTablaPorColumna(idxCol) {
   });
 
   ordenAsc[key] = !ordenAsc[key];
-  resumenPorCP = objs.map(o => [o.cliente, o.cp, o.periodo, o.fechaCP, o.categoria, o.importe, o.debito, o.abonado]);
+  resumenPorCP = objs.map(o => [o.cliente, o.cp, o.periodo, o.fechaCP, o.categoria, o.importe, o.debito, o.refactura, o.abonado]);
   renderTablaResumen();
 }
       function agregarSortListener() {
@@ -722,28 +876,39 @@ function ordenarTablaPorColumna(idxCol) {
       function aplicarFiltro() {
         mostrarLoading();
         setTimeout(() => {
-          renderTablaResumen();
-          renderGraficos();
-          actualizarKPIs();
-          ocultarLoading();
+          try {
+            renderTablaResumen();
+            renderGraficos();
+            actualizarKPIs();
+          } catch (error) {
+            console.error("Error al aplicar filtros:", error);
+            if (typeof mostrarErrorCargaTabla === "function") {
+              mostrarErrorCargaTabla("Ocurrió un error al renderizar la tabla.");
+            }
+          } finally {
+            ocultarLoading();
+          }
         }, 50);
       }
 
-      function renderTablaResumen() {
+  function renderTablaResumen() {
   const clienteFiltro = document.getElementById("clienteSelect").value;
   const desde = document.getElementById("desde").value;
   const hasta = document.getElementById("hasta").value;
-  const soloVencidos = document.getElementById("soloVencidos")?.checked;
-  const soloPorVencer = document.getElementById("soloPorVencer")?.checked;
+  const cpFiltro = (document.getElementById("cpFiltro")?.value || "").trim().toLowerCase();
+  const filtrosEtiquetas = getFiltrosEtiquetas();
 
   const tablaDiv = document.getElementById("tablaResumen");
 
-  // Filtro base (usa Período como referencia de fecha)
-  const filtrado = resumenPorCP.filter(([cli, cp, periodo]) => {
-    const fecha = new Date((periodo||"").split("/").reverse().join("/"));
+  // Filtro base (usa Fecha CP como referencia; si falta, usa Período)
+  const filtrado = resumenPorCP.filter((row) => {
+    if (!Array.isArray(row)) return false;
+    const [cli, cp, periodo, fechaCP] = row;
+    const fecha = new Date(((fechaCP || periodo || "")).split("/").reverse().join("/"));
     const coincideCliente = !clienteFiltro || cli === clienteFiltro;
     const coincideFechas = (!desde || fecha >= new Date(desde)) && (!hasta || fecha <= new Date(hasta));
-    return coincideCliente && coincideFechas;
+    const coincideCp = !cpFiltro || String(cp || "").toLowerCase().includes(cpFiltro);
+    return coincideCliente && coincideFechas && coincideCp && cumpleFiltroEtiquetas(row, filtrosEtiquetas);
   });
 
   if (!filtrado.length) {
@@ -770,8 +935,9 @@ function ordenarTablaPorColumna(idxCol) {
           <th data-col="4">Fecha CP</th>
           <th>(Vencido | A vencer)</th>
           <th data-col="6">Débito/Reintegros</th>
-          <th data-col="7">Cobrado</th>
-          <th data-col="8">Saldo Pendiente</th>
+          <th data-col="7">Refacturación</th>
+          <th data-col="8">Cobrado</th>
+          <th data-col="9">Saldo Pendiente</th>
           <th>Vencimiento</th>
           <th>Detalle venc.</th>
         </tr>
@@ -780,24 +946,29 @@ function ordenarTablaPorColumna(idxCol) {
   `;
 
   // Totales globales
-  let totImporte = 0, totDebito = 0, totAbonado = 0, totSaldo = 0, totVenc = 0, totPorVenc = 0;
+  let totImporte = 0, totDebito = 0, totRefactura = 0, totAbonado = 0, totSaldo = 0, totVenc = 0, totPorVenc = 0;
 
   Object.keys(porCliente).sort().forEach(cliente => {
     const filas = porCliente[cliente];
 
     // Subtotales por cliente
-    let subImporte = 0, subDebito = 0, subAbonado = 0, subSaldo = 0, subVenc = 0, subPorVenc = 0;
+    let subImporte = 0, subDebito = 0, subRefactura = 0, subAbonado = 0, subSaldo = 0, subVenc = 0, subPorVenc = 0;
 
     // Precalcular subtotales
-    filas.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
+    filas.forEach((row) => {
+      if (!Array.isArray(row)) return;
+      const [cli, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado] = row;
       const fact = Number(facturado)||0;
       const deb  = Number(debito)||0;
+      const refac = Number(refactura)||0;
       const abo  = Number(abonado)||0;
-      const saldoPend = Math.max(0, fact - (deb + abo));
+      const saldoPendRaw = fact + refac - deb - abo;
+      const saldoPend = Math.max(0, saldoPendRaw);
       subImporte += fact;
       subDebito  += deb;
+      subRefactura += refac;
       subAbonado += abo;
-      subSaldo   += (abo + deb - fact);
+      subSaldo   += saldoPend;
 
       if (saldoPend > 0) {
         const v = calcularVencimientoAvanzado(periodo, fechaCP, categoria);
@@ -806,7 +977,7 @@ function ordenarTablaPorColumna(idxCol) {
       }
     });
 
-    const clave = cliente.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_");
+    const clave = String(cliente || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_");
 
     // Header del cliente
     html += `
@@ -823,6 +994,7 @@ function ordenarTablaPorColumna(idxCol) {
           </div>
         </td>
         <td class="${subDebito<0?'negativo':''}">${formatoMoneda(subDebito)}</td>
+        <td class="${subRefactura<0?'negativo':''}">${formatoMoneda(subRefactura)}</td>
         <td class="${subAbonado<0?'negativo':''}">${formatoMoneda(subAbonado)}</td>
         <td class="${subSaldo<0?'negativo':''}">${formatoMoneda(subSaldo)}</td>
         <td></td>
@@ -832,17 +1004,21 @@ function ordenarTablaPorColumna(idxCol) {
 
     // Filas detalle
     filas.forEach(row => {
-      const [cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado] = row;
+      if (!Array.isArray(row)) return;
+      const [cli, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado] = row;
       const fact = Number(facturado)||0;
       const deb  = Number(debito)||0;
+      const refac = Number(refactura)||0;
       const abo  = Number(abonado)||0;
 
-      const saldo = abo + deb - fact;
-      const saldoPend = Math.max(0, fact - (deb + abo));
+      const saldo = abo - deb + refac;
+      const saldoPendRaw = fact + refac - deb - abo;
+      const saldoPend = Math.max(0, saldoPendRaw);
+      const catUp = String(categoria || "").toUpperCase();
 
       // Etiquetas de abono
       let etiquetaAbono = '';
-      if (saldoPend === 0) {
+      if (saldoPendRaw <= 0) {
         etiquetaAbono = `<span class="badge badge-ok" style="margin-left:6px;">abonado total</span>`;
       } else if (abo > 0) {
         etiquetaAbono = `<span class="badge badge-warn" style="margin-left:6px;">abonado parcial</span>`;
@@ -852,11 +1028,7 @@ function ordenarTablaPorColumna(idxCol) {
       let badgeVenc = '', detalleVenc = '', rowClass = '';
       if (saldoPend > 0) {
         const v = calcularVencimientoAvanzado(periodo, fechaCP, categoria);
-        const catUp = String(categoria||"").toUpperCase();
-        if (catUp === 'DÉBITOS' || catUp === 'DEBITOS') {
-          badgeVenc = `<span class="badge badge-ok">—</span>`;
-          detalleVenc = `Sin vencimiento (Débito)`;
-        } else if (v.vencido) {
+        if (v.vencido) {
           badgeVenc = `<span class="badge badge-danger">VENCIDO</span>`;
           detalleVenc = `Vencido hace ${v.diasExcedidos} d`;
           rowClass = 'row-vencido';
@@ -871,8 +1043,9 @@ function ordenarTablaPorColumna(idxCol) {
       const vencidoPart   = (saldoPend>0 && badgeVenc.includes('VENCIDO')) ? saldoPend : 0;
       const porVencerPart = (saldoPend>0 && badgeVenc.includes('A VENCER')) ? saldoPend : 0;
 
+      const rowAbonado = saldoPendRaw <= 0 ? "row-abonado" : "";
       html += `
-        <tr class="detail-row ${rowClass}" data-cliente="${clave}" style="display:none;">
+        <tr class="detail-row ${rowClass} ${rowAbonado}" data-cliente="${clave}" style="display:none;">
           <td>${cli}</td>
           <td>${cp}</td>
           <td>${formatoMoneda(fact)}</td>
@@ -885,8 +1058,9 @@ function ordenarTablaPorColumna(idxCol) {
             </div>
           </td>
           <td class="${deb < 0 ? "negativo" : ""}">${formatoMoneda(deb)}</td>
+          <td class="${refac < 0 ? "negativo" : ""}">${formatoMoneda(refac)}</td>
           <td class="${abo < 0 ? "negativo" : ""}">${formatoMoneda(abo)}</td>
-          <td class="${saldo < 0 ? "negativo" : ""}">${formatoMoneda(saldo)}</td>
+          <td class="${saldoPend < 0 ? "negativo" : ""}">${formatoMoneda(saldoPend)}</td>
           <td>${badgeVenc}${etiquetaAbono}</td>
           <td>${detalleVenc}</td>
         </tr>
@@ -896,6 +1070,7 @@ function ordenarTablaPorColumna(idxCol) {
     // Acumular totales
     totImporte += subImporte;
     totDebito  += subDebito;
+    totRefactura += subRefactura;
     totAbonado += subAbonado;
     totSaldo   += subSaldo;
     totVenc    += subVenc;
@@ -916,6 +1091,7 @@ function ordenarTablaPorColumna(idxCol) {
           </div>
         </td>
         <td class="${totDebito<0?'negativo':''}">${formatoMoneda(totDebito)}</td>
+        <td class="${totRefactura<0?'negativo':''}">${formatoMoneda(totRefactura)}</td>
         <td class="${totAbonado<0?'negativo':''}">${formatoMoneda(totAbonado)}</td>
         <td class="${totSaldo<0?'negativo':''}">${formatoMoneda(totSaldo)}</td>
         <td></td>
@@ -953,18 +1129,24 @@ function ordenarTablaPorColumna(idxCol) {
   const cliente = document.getElementById("clienteSelect").value;
   const desde = document.getElementById("desde").value;
   const hasta = document.getElementById("hasta").value;
+  const cpFiltro = (document.getElementById("cpFiltro")?.value || "").trim().toLowerCase();
+  const filtrosEtiquetas = getFiltrosEtiquetas();
 
-  // Esquema 8 cols
-  const filtrado = resumenPorCP.filter(([cli, cp, periodo]) => {
-    const fecha = new Date((periodo||"").split("/").reverse().join("/"));
+  // Esquema 9 cols
+  const filtrado = resumenPorCP.filter((row) => {
+    if (!Array.isArray(row)) return false;
+    const [cli, cp, periodo, fechaCP] = row;
+    const fecha = new Date(((fechaCP || periodo || "")).split("/").reverse().join("/"));
     return (!cliente || cli === cliente) &&
            (!desde || fecha >= new Date(desde)) &&
-           (!hasta || fecha <= new Date(hasta));
+           (!hasta || fecha <= new Date(hasta)) &&
+           (!cpFiltro || String(cp || "").toLowerCase().includes(cpFiltro)) &&
+           cumpleFiltroEtiquetas(row, filtrosEtiquetas);
   });
 
-  let totalFacturado = 0, totalDebito = 0, totalAbonado = 0;
+  let totalFacturado = 0, totalDebito = 0, totalRefactura = 0, totalAbonado = 0;
   const mensual = {};
-  filtrado.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
+  filtrado.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado]) => {
     const mes = (periodo||"").slice(3); // "MM/YYYY" -> funciona si tu formatPeriodo_ devuelve "01/MM/YYYY"
     mensual[mes] = mensual[mes] || { facturado: 0, abonado: 0 };
     mensual[mes].facturado += Number(facturado)||0;
@@ -972,22 +1154,25 @@ function ordenarTablaPorColumna(idxCol) {
 
     totalFacturado += Number(facturado)||0;
     totalDebito    += Number(debito)||0;
+    totalRefactura += Number(refactura)||0;
     totalAbonado   += Number(abonado)||0;
   });
 
   const facturadoM = totalFacturado / 1_000_000;
+  const refacturaM = totalRefactura / 1_000_000;
   const debitoM    = totalDebito / 1_000_000;
   const abonadoM   = totalAbonado / 1_000_000;
-  const saldoM     = (totalAbonado + totalDebito - totalFacturado) / 1_000_000;
+  const saldoM     = (totalFacturado + totalRefactura - totalDebito - totalAbonado) / 1_000_000;
 
         const ctxResumen = document.getElementById("chartResumen");
         chartResumen = new Chart(ctxResumen, {
           type: "bar",
           data: {
-            labels: ["Facturado", "Débito/Reintegros", "Cobrado", "Saldo"],
-            datasets: [{ label: "Montos (millones)", data: [facturadoM, debitoM, abonadoM, saldoM],
+            labels: ["Facturado", "Refacturación", "Débito/Reintegros", "Cobrado", "Saldo"],
+            datasets: [{ label: "Montos (millones)", data: [facturadoM, refacturaM, debitoM, abonadoM, saldoM],
               backgroundColor: [
                 "rgba(54, 162, 235, 0.8)",
+                "rgba(245, 158, 11, 0.8)",
                 "rgba(255, 206, 86, 0.8)",
                 "rgba(67, 160, 71, 0.8)",
                 saldoM < 0 ? "rgba(255, 0, 0, 0.8)" : "rgba(255, 99, 132, 0.8)",
@@ -996,11 +1181,15 @@ function ordenarTablaPorColumna(idxCol) {
           options: { responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} M` } } }, scales: { y: { beginAtZero: true, ticks: { callback: (val) => val.toFixed(2) + " M" } } } }
         });
 
-        const saldoPendiente = Math.max(totalFacturado - totalAbonado - totalDebito, 0);
-        const cobrado = totalAbonado; const debito = totalDebito; const totalTorta = saldoPendiente + cobrado + debito;
+        const saldoPendiente = Math.max(totalFacturado - totalDebito - totalAbonado + totalRefactura, 0);
+        const cobrado = totalAbonado;
+        const debito = totalDebito;
+        const refactura = totalRefactura;
+        const totalTorta = saldoPendiente + cobrado + debito + refactura;
         const porcentajeSaldo = totalTorta > 0 ? (saldoPendiente / totalTorta) * 100 : 0;
         const porcentajeCobrado = totalTorta > 0 ? (cobrado / totalTorta) * 100 : 0;
         const porcentajeDebito = totalTorta > 0 ? (debito / totalTorta) * 100 : 0;
+        const porcentajeRefactura = totalTorta > 0 ? (refactura / totalTorta) * 100 : 0;
 
         const ctxTorta = document.getElementById("chartTorta");
         chartTorta = new Chart(ctxTorta, {
@@ -1009,17 +1198,22 @@ function ordenarTablaPorColumna(idxCol) {
               `Saldo Pendiente (${porcentajeSaldo.toFixed(1)}%)`,
               `Cobrado (${porcentajeCobrado.toFixed(1)}%)`,
               `Débito/Reintegros (${porcentajeDebito.toFixed(1)}%)`,
+              `Refacturación (${porcentajeRefactura.toFixed(1)}%)`,
             ],
-            datasets: [{ data: [saldoPendiente, cobrado, debito], backgroundColor: [
-              "rgba(255, 99, 132, 0.7)","rgba(67, 160, 71, 0.7)","rgba(54, 162, 235, 0.7)"] }],
+            datasets: [{ data: [saldoPendiente, cobrado, debito, refactura], backgroundColor: [
+              "rgba(255, 99, 132, 0.7)",
+              "rgba(67, 160, 71, 0.7)",
+              "rgba(54, 162, 235, 0.7)",
+              "rgba(245, 158, 11, 0.7)"
+            ] }],
           },
           options: { cutout: "70%", plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toLocaleString("es-AR",{ maximumFractionDigits:2 })} (${((ctx.raw/totalTorta)*100).toFixed(1)}%)` } } } }
         });
 
           // Agrupar por YYYY-MM usando "periodo" (formato dd/mm/yyyy)
   const byYM = new Map();
-  // Esquema 8 cols: [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado]
-  filtrado.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
+  // Esquema 9 cols: [cliente, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado]
+  filtrado.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado]) => {
     const [dd, mm, yy] = String(periodo || "").split("/");
     if (!yy || !mm) return;
     const ymKey = `${yy}-${mm.padStart(2,"0")}`;
@@ -1183,24 +1377,25 @@ const YearBandsPlugin = {
 
       /* % Deuda / Facturación (idéntico a tu versión) */
       function renderPorcentajeDeuda() {
-  // Esquema: [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado]
+  // Esquema: [cliente, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado]
   const porCliente = new Map();
 
-  resumenPorCP.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, abonado]) => {
+  resumenPorCP.forEach(([cli, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado]) => {
     // (Opcional) excluir ciertos clientes:
     // if (cli === "PAMI" || cli === "DIRECCIÓN GRAL SALUD") return;
 
     const fact = Number(facturado)||0;
     const deb  = Number(debito)||0;
+    const refac = Number(refactura)||0;
     const abo  = Number(abonado)||0;
 
     if (!porCliente.has(cli)) porCliente.set(cli, { totalFact:0, totalPend:0 });
     const agg = porCliente.get(cli);
 
     // Sumamos facturación positiva
-    if (fact > 0) {
-      agg.totalFact += fact;
-      const saldoCp = fact - (abo + deb);   // saldo pendiente del CP
+    if (fact > 0 || refac > 0) {
+      agg.totalFact += (fact + refac);
+      const saldoCp = fact - deb - abo + refac;   // saldo pendiente del CP
       if (saldoCp > 0) agg.totalPend += saldoCp;
     }
   });
@@ -1271,14 +1466,48 @@ const YearBandsPlugin = {
         });
       });
       
+function mostrarErrorCargaTabla(mensaje) {
+  const tablaDiv = document.getElementById("tablaResumen");
+  if (!tablaDiv) return;
+  tablaDiv.innerHTML = `<p>${mensaje}</p>`;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  const checkboxIds = [
+    "soloVencidos",
+    "soloPorVencer",
+    "soloAbonadoTotal",
+    "soloAbonadoParcial",
+    "soloDebitos",
+    "soloRefacturas"
+  ];
+  checkboxIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("change", () => {
+      aplicarFiltro();
+    });
+  });
+
+  const cpFiltroEl = document.getElementById("cpFiltro");
+  if (cpFiltroEl) {
+    cpFiltroEl.addEventListener("input", () => {
+      aplicarFiltro();
+    });
+  }
+
   google.script.run.withSuccessHandler((data) => {
     // NUEVO esquema esperado por fila:
-    // [cliente, cp, periodo, fechaCP, categoria, facturado, debito, abonado]
+    // [cliente, cp, periodo, fechaCP, categoria, facturado, debito, refactura, abonado]
     // Consolidamos por (cliente|cp) sumando montos. Para fechaCP tomamos la primera no vacía.
+    const rawData = Array.isArray(data) ? data : [];
+    if (!rawData.length && data) {
+      console.warn("Formato inesperado de datos para comprobantes:", data);
+      mostrarErrorCargaTabla("No se pudieron cargar los datos de comprobantes de pago.");
+    }
     resumenPorCP = Array.from(
-      data.reduce((map, row) => {
-        const [cli, cp, periodo, fechaCP, categoria, fact, deb, abo] = row;
+      rawData.reduce((map, row) => {
+        const [cli, cp, periodo, fechaCP, categoria, fact, deb, refac, abo] = Array.isArray(row) ? row : [];
         const k = `${cli}|${cp}`;
         if (!map.has(k)) map.set(k, {
           cliente: cli,
@@ -1286,22 +1515,30 @@ document.addEventListener("DOMContentLoaded", () => {
           periodo,
           fechaCP: fechaCP || "",
           categoria: categoria || "",
-          facturado: 0, debito: 0, abonado: 0
+          facturado: 0, debito: 0, refactura: 0, abonado: 0
         });
         const it = map.get(k);
         it.facturado += Number(fact) || 0;
         it.debito    += Number(deb)  || 0;
+        it.refactura += Number(refac)  || 0;
         it.abonado   += Number(abo)  || 0;
         // conservar la primera fechaCP válida si no estaba
         if (!it.fechaCP && fechaCP) it.fechaCP = fechaCP;
         // si alguna línea marca GASTO DE FUNCIONAMIENTO, priorizala; luego Débitos; sino hospitalarios
         const cat = (categoria || "").toUpperCase();
-        const rank = { "GASTO DE FUNCIONAMIENTO": 2, "DÉBITOS": 1, "DEBITOS": 1, "GASTOS HOSPITALARIOS": 0 };
+        const rank = {
+          "GASTO DE FUNCIONAMIENTO": 3,
+          "REFACTURACIÓN": 2,
+          "REFACTURACION": 2,
+          "DÉBITOS": 1,
+          "DEBITOS": 1,
+          "GASTOS HOSPITALARIOS": 0
+        };
         const curr = (it.categoria || "").toUpperCase();
         if (!curr || (rank[cat] ?? 0) > (rank[curr] ?? 0)) it.categoria = categoria;
         return map;
       }, new Map()).values()
-    ).map(v => [v.cliente, v.cp, v.periodo, v.fechaCP, v.categoria, v.facturado, v.debito, v.abonado]);
+    ).map(v => [v.cliente, v.cp, v.periodo, v.fechaCP, v.categoria, v.facturado, v.debito, v.refactura, v.abonado]);
 
     google.script.run.withSuccessHandler((ingData) => {
       ingresosData = ingData; // [cliente, fechaStr, ingreso]
