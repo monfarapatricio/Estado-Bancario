@@ -29,6 +29,29 @@ function obtenerResumenPorCP() {
 
   /** deudas[cp] = {...} */
   const deudas = {};
+  const referencias = {};
+
+  function initDeuda_(cp, data) {
+    if (deudas[cp]) return deudas[cp];
+    const periodoDate = parsePeriodo_(data.periodoRaw) || data.fechaDoc || null;
+    deudas[cp] = {
+      cliente: data.cliente,
+      periodoDate,
+      periodoStr: formatPeriodo_(data.periodoRaw, periodoDate),
+      fechaDoc: data.fechaDoc,
+      facturado: 0,
+      debito: 0,
+      refactura: 0,
+      conceptos: new Set(),
+      descripciones: new Set()
+    };
+    return deudas[cp];
+  }
+
+  function extraerCpReferencia_(descripcion) {
+    const match = String(descripcion || "").match(/CORRESPONDE AL CP\s*([^\s]+)/i);
+    return match ? normalizeCP_(match[1]) : "";
+  }
 
   cpVals.forEach(r => {
     const cp   = normalizeCP_(r[idxCP['CP']]);
@@ -40,38 +63,42 @@ function obtenerResumenPorCP() {
     const concepto   = safeString_(r[idxCP['Concepto']]);
     const desc       = safeString_(r[idxCP['Descripción']]);
     const montoNum   = toNumber_(r[idxCP['Monto']]);
+    const conceptoNorm = concepto.trim().toUpperCase();
 
-    if (!deudas[cp]) {
-      const periodoDate = parsePeriodo_(periodoRaw) || fechaDoc || null;
-      deudas[cp] = {
-        cliente,
-        periodoDate,
-        periodoStr: formatPeriodo_(periodoRaw, periodoDate),
-        fechaDoc,
-        facturado: 0,
-        debito: 0,
-        conceptos: new Set(),
-        descripciones: new Set()
-      };
+    const dataBase = { cliente, periodoRaw, fechaDoc };
+
+    if (conceptoNorm === "DEBITO" || conceptoNorm === "REFACTURACION") {
+      const cpRef = extraerCpReferencia_(desc);
+      if (!cpRef) return;
+      if (!referencias[cpRef]) referencias[cpRef] = { debito: 0, refactura: 0 };
+      if (conceptoNorm === "DEBITO") referencias[cpRef].debito += Math.abs(montoNum);
+      if (conceptoNorm === "REFACTURACION") referencias[cpRef].refactura += Math.abs(montoNum);
+      initDeuda_(cpRef, dataBase);
+      return;
     }
 
-    deudas[cp].conceptos.add(concepto);
-    if (desc) deudas[cp].descripciones.add(desc);
+    const deuda = initDeuda_(cp, dataBase);
+    deuda.conceptos.add(conceptoNorm);
+    if (desc) deuda.descripciones.add(desc);
+    deuda.facturado += Math.abs(montoNum);
 
-    if (isDebito_(concepto)) deudas[cp].debito += Math.abs(montoNum);
-    else deudas[cp].facturado += Math.abs(montoNum);
-
-    if (!deudas[cp].periodoDate) {
+    if (!deuda.periodoDate) {
       const p = parsePeriodo_(periodoRaw);
       if (p) {
-        deudas[cp].periodoDate = p;
-        deudas[cp].periodoStr  = formatPeriodo_(periodoRaw, p);
+        deuda.periodoDate = p;
+        deuda.periodoStr  = formatPeriodo_(periodoRaw, p);
       } else if (fechaDoc) {
-        deudas[cp].periodoDate = fechaDoc;
-        deudas[cp].periodoStr  = formatDate_(fechaDoc);
+        deuda.periodoDate = fechaDoc;
+        deuda.periodoStr  = formatDate_(fechaDoc);
       }
     }
-    if (!deudas[cp].fechaDoc && fechaDoc) deudas[cp].fechaDoc = fechaDoc;
+    if (!deuda.fechaDoc && fechaDoc) deuda.fechaDoc = fechaDoc;
+  });
+
+  Object.keys(referencias).forEach(cpRef => {
+    if (!deudas[cpRef]) return;
+    deudas[cpRef].debito += referencias[cpRef].debito || 0;
+    deudas[cpRef].refactura += referencias[cpRef].refactura || 0;
   });
 
   // --- PAGOS ---
@@ -89,7 +116,7 @@ function obtenerResumenPorCP() {
       const d = deudas[cp];
       if (!d) return;
       const abonadoActual = pagosPorCP[cp]?.abonado || 0;
-      const saldoPend = Math.max(0, d.facturado - d.debito - abonadoActual);
+    const saldoPend = Math.max(0, d.facturado + d.refactura - d.debito - abonadoActual);
       if (saldoPend <= 0) return;
       const aplicar = Math.min(restante, saldoPend);
       if (!pagosPorCP[cp]) pagosPorCP[cp] = { abonado: 0 };
@@ -103,8 +130,10 @@ function obtenerResumenPorCP() {
       ...Array.from(d.conceptos || []),
       ...Array.from(d.descripciones || [])
     ].filter(Boolean);
+    const hayRefactura = (d.refactura || 0) > 0;
     const hayFuncionamiento = textos.some(t => /FUNCIONAMIENTO/i.test(t));
     if (hayFuncionamiento) return 'GASTO DE FUNCIONAMIENTO';
+    if (hayRefactura) return 'REFACTURACIÓN';
     if (d.facturado === 0 && d.debito > 0) return 'Débitos';
     return 'GASTOS HOSPITALARIOS';
   }
@@ -112,6 +141,7 @@ function obtenerResumenPorCP() {
   const out = [];
   Object.keys(deudas).forEach(cp => {
     const d = deudas[cp];
+    if (!d) return;
     const abonado = pagosPorCP[cp]?.abonado || 0;
     const categoria = categorizarCP(d);
     out.push([
@@ -122,6 +152,7 @@ function obtenerResumenPorCP() {
       categoria,
       round2_(d.facturado),
       round2_(d.debito),
+      round2_(d.refactura),
       round2_(abonado)
     ]);
   });
